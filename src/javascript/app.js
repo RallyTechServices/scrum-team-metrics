@@ -17,7 +17,7 @@ Ext.define("scrum-team-metrics", {
         this.callParent();
     },
     onScopeChange: function(timeboxScope){
-
+        this.setLoading(true);
         this._fetchReleases(timeboxScope).then({
             scope: this,
             success: function(releases){
@@ -34,6 +34,7 @@ Ext.define("scrum-team-metrics", {
                 calculator.calculate().then({
                     scope: this,
                     success: function(){
+                        this.setLoading(false);
                         this._displayMetrics(calculator);
                     }
                 });
@@ -115,8 +116,24 @@ Ext.define("scrum-team-metrics", {
             featureSummaryCalculator: calculator,
             title: "Feature Summary"
         });
-        summary.setWidth(top_chart_width *.50);
+        summary.setWidth(top_chart_width *.30);
         summary.setHeight(300);
+        var delivered = top_row_ct.add({
+            xtype: 'tsfeaturesdelivered',
+            featureSummaryCalculator: calculator,
+            title: 'Delivered'
+        });
+        delivered.setWidth(top_chart_width *.20);
+        delivered.setHeight(300);
+
+
+        var accepted = top_row_ct.add({
+            xtype: 'tsstoriesaccepted',
+            featureSummaryCalculator: calculator,
+            title: 'Accepted'
+        });
+        accepted.setWidth(top_chart_width *.20);
+        accepted.setHeight(300);
 
 
         var risk = top_row_ct.add({
@@ -127,7 +144,7 @@ Ext.define("scrum-team-metrics", {
             featureModelName: this.featureModelName,
             timeboxScope: this.getContext().getTimeboxScope()
         });
-        risk.setWidth(top_chart_width *.50);
+        risk.setWidth(top_chart_width *.30);
         risk.setHeight(300);
 
         var second_row_ct = this.down('#ct-second-row');
@@ -140,7 +157,7 @@ Ext.define("scrum-team-metrics", {
             featureModelName: this.featureModelName,
             title: "Feature Burnup"
         });
-        burnup_chart.setWidth(top_chart_width * .50);
+        burnup_chart.setWidth(top_chart_width * .45);
         burnup_chart.setHeight(300);
 
         var pushed_chart = second_row_ct.add({
@@ -148,7 +165,7 @@ Ext.define("scrum-team-metrics", {
             featureSummaryCalculator: calculator,
             title: "Features pushed from Feature Target Sprints"
         });
-        pushed_chart.setWidth(top_chart_width * .50);
+        pushed_chart.setWidth(top_chart_width * .45);
         pushed_chart.setHeight(300);
 
 

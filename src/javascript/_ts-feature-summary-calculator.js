@@ -64,7 +64,8 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
             this._fetchFeaturesComplete(),
             this._fetchFeatureColors(),
             this.getDoneItemsWithIncompleteDoD(),
-            this._fetchFeaturesPushed()
+            this._fetchFeaturesPushed(),
+            this._fetchStoryAcceptedCounts()
         ];
 
         Deft.Promise.all(promises).then({
@@ -79,6 +80,8 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
 
                 this.doneFeaturesWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[4]);
                 this.featuresPushedCount = this._getFeaturesPushedCount(results[5]);
+                this.storiesAcceptedCounts = results[6];
+                console.log('results',results)
                 deferred.resolve();
             },
             failure: function(msg){
@@ -174,6 +177,27 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         console.log('snaps', sprints, pushed_features);
         this.featurePushedSprintHash = sprints;
         return pushed_features.length;
+    },
+    _fetchStoryAcceptedCounts: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        var filters = this.timeboxScope.getQueryFilter();
+
+        Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName,filters,['ObjectID','LeafStoryCount','AcceptedLeafStoryCount']).then({
+            scope: this,
+            success: function(records){
+                var total_count = 0,
+                    accepted_count = 0;
+
+                _.each(records, function(r){
+                    total_count += r.get('LeafStoryCount') || 0;
+                    accepted_count += r.get('AcceptedLeafStoryCount') || 0;
+                });
+                console.log('storie accpeted counts',{Accepted: accepted_count, Total: total_count} );
+                deferred.resolve({Accepted: accepted_count, Total: total_count})
+            }
+        });
+
+        return deferred;
     }
 });
 

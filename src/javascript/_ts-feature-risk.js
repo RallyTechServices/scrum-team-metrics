@@ -10,23 +10,21 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             '#fce205': 'Moderate Risk'
         },
         classificationChartColorMapping: {
-            'On Track': 'green',
-            'High Risk': 'red',
-            'Moderate Risk': 'yellow',
-            'Other': '#f6f6f6'
+            'On Track': Rally.technicalservices.Color.classificationOnTrack,
+            'High Risk': Rally.technicalservices.Color.classificationHighRisk,
+            'Moderate Risk': Rally.technicalservices.Color.classificationModerateRisk,
+            'Other': Rally.technicalservices.Color.classificationOther
         },
-        completedColor: '#8bbc21' ,
-        currentColor: '#2f7ed8',
 
         loadMask: false,
 
         chartConfig: {
-            colors: [ '#8bbc21', '#2f7ed8', '#910000',
-                '#492970', '#f28f43', '#145499','#77a1e5', '#c42525', '#a6c96a',
-                '#7cb5ec', '#434348', '#90ed7d', '#f7a35c', '#8085e9','#aa1925',
-                '#f15c80', '#e4d354', '#2b908f', '#f45b5b', '#91e8e1','#1aadce',
-                '#4572A7', '#AA4643', '#89A54E', '#80699B', '#3D96AE',
-                '#DB843D', '#92A8CD', '#A47D7C', '#B5CA92'],
+            colors: [
+                Rally.technicalservices.Color.classificationOnTrack,
+                Rally.technicalservices.Color.classificationHighRisk,
+                Rally.technicalservices.Color.classificationModerateRisk,
+                Rally.technicalservices.Color.classificationOther
+            ],
 
             chart: {
                 plotBackgroundColor: null,
