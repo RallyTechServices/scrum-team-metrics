@@ -2,7 +2,7 @@ Ext.define('Rally.technicalservices.Color',{
     singleton: true,
 
     featureCompleteColor: '#8bbc21',
-    featureCompleteIncompleteDodColor: '#90ed7d',
+    featureCompleteIncompleteDodColor: '#a6c96a',
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
 

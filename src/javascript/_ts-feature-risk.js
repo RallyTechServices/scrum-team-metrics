@@ -7,7 +7,9 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         displayColorClassificationMapping: {
             '#107c1e': 'On Track',
             '#df1a7b': 'High Risk',
-            '#fce205': 'Moderate Risk'
+            '#fce205': 'Moderate Risk',
+            '#f9a814': 'High Risk',
+            '#ee6c19': 'High Risk'
         },
         classificationChartColorMapping: {
             'On Track': Rally.technicalservices.Color.classificationOnTrack,
@@ -44,17 +46,17 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 pie: {
                     dataLabels: {
                         enabled: true,
-                        distance: 5,
+                        distance: -5,
                         style: {
                            // fontWeight: 'bold',
                             color: 'black',
                            // textShadow: '0px 1px 2px black',
-                            fontSize: '12px'
+                            fontSize: '10px'
                         },
                         format: '{point.name}: {point.y}'
                     },
                     center: ['50%', '50%'],
-                    size: '75%'
+                    size: '60%'
                 }
             }
         },
@@ -81,6 +83,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
+            console.log('color',color);
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;

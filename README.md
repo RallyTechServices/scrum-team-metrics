@@ -1,77 +1,39 @@
 #Scrum Team Metrics
 
+App that shows various feature metrics for features within the selected release.  
 
-Features are considered deployed when: 
-Feature State = Done 
+![Screenshot](/images/scrum-team-metrics.png)
 
+Metrics shown are:
 
+Total Features
+The total number of features currently associated with the selected release.  
 
+Planned Features
+The number of features associated with the selected release at the start day and time of the release.  
 
+Added Features
+The number of unique features that are currently in the release that were not in the release at the start day and time of the release.  
 
-## Development Notes
+Descoped Features
+The number of unique features that are not currently in the release but were in the release on the start day of the release.  
 
-### First Load
+Delivered Features
+The number of current features that are completed (State = Done)
 
-If you've just downloaded this from github and you want to do development, 
-you're going to need to have these installed:
+Delivered Features with Incomplete DoD stories
+The number of current features that are completed but have incomplete DoD stories.  DoD stories are any stories of the DoD Story type that belong to that feature.  
 
- * node.js
- * grunt-cli
- * grunt-init
- 
-Since you're getting this from github, we assume you have the command line
-version of git also installed.  If not, go get git.
+% Accepted Stories
+The percent of leaf user stories associated with the Feature dataset that have been accepted.  
 
-If you have those three installed, just type this in the root directory here
-to get set up to develop:
+Feature Risk
+Feature risk as determined by the color of the feature.  Features colored Green are considered On Track, features colored Yellow are considered moderate risk and features colored Pink or Orange are considered High Risk.  All other feature colors (or lack of color) are ignored and represented by "Other"
 
-  npm install
+Feature Burnup
+Cumulative view of the total features and completed features for each day during the release period.   
 
-### Structure
+Features Pushed into Target Sprint
+Number of features pushed out of the target sprint.  Target Sprint is a custom field on the feature that is used to plan for the feature time frame.
+If a feature is pushed out of 2 target sprints, it will show up in the graph for each time it is pushed.  
 
-  * src/javascript:  All the JS files saved here will be compiled into the 
-  target html file
-  * src/style: All of the stylesheets saved here will be compiled into the 
-  target html file
-  * test/fast: Fast jasmine tests go here.  There should also be a helper 
-  file that is loaded first for creating mocks and doing other shortcuts
-  (fastHelper.js) **Tests should be in a file named <something>-spec.js**
-  * test/slow: Slow jasmine tests go here.  There should also be a helper
-  file that is loaded first for creating mocks and doing other shortcuts 
-  (slowHelper.js) **Tests should be in a file named <something>-spec.js**
-  * templates: This is where templates that are used to create the production
-  and debug html files live.  The advantage of using these templates is that
-  you can configure the behavior of the html around the JS.
-  * config.json: This file contains the configuration settings necessary to
-  create the debug and production html files.  Server is only used for debug,
-  name, className and sdk are used for both.
-  * package.json: This file lists the dependencies for grunt
-  * auth.json: This file should NOT be checked in.  Create this to run the
-  slow test specs.  It should look like:
-    {
-        "username":"you@company.com",
-        "password":"secret"
-    }
-  
-### Usage of the grunt file
-####Tasks
-    
-##### grunt debug
-
-Use grunt debug to create the debug html file.  You only need to run this when you have added new files to
-the src directories.
-
-##### grunt build
-
-Use grunt build to create the production html file.  We still have to copy the html file to a panel to test.
-
-##### grunt test-fast
-
-Use grunt test-fast to run the Jasmine tests in the fast directory.  Typically, the tests in the fast 
-directory are more pure unit tests and do not need to connect to Rally.
-
-##### grunt test-slow
-
-Use grunt test-slow to run the Jasmine tests in the slow directory.  Typically, the tests in the slow
-directory are more like integration tests in that they require connecting to Rally and interacting with
-data.

@@ -12,6 +12,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         context: undefined,
         featureModelName: undefined,
 
+        loadMask: false,
         /**
          * Chart configurations
          */
@@ -20,6 +21,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         calculatorType: 'Rally.technicalservices.calculator.FeatureBurnup',
         calculatorConfig: undefined,
         storeType: 'Rally.data.lookback.SnapshotStore',
+
 
         storeConfig: {
             fetch: [
@@ -75,10 +77,10 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 }
             ],
             legend: {
-                align: 'right',
+                align: 'left',
                 x: 0,
                 verticalAlign: 'top',
-                y: 25,
+                y: 30,
                 floating: true,
                 backgroundColor: 'white',
                 borderColor: '#CCC',

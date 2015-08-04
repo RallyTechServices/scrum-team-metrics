@@ -12,7 +12,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 Rally.technicalservices.Color.featurePlanned,
                 Rally.technicalservices.Color.featureAdded,
                 Rally.technicalservices.Color.featureDescoped,
-                Rally.technicalservices.Color.featurePushedColor
+                Rally.technicalservices.Color.featureCompleteColor
             ],
 
             chart: {
@@ -88,7 +88,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
             ['Planned',calculator.featuresOnDay0.length],
             ['Added',calculator.featuresAdded.length],
             ['Descoped',calculator.featuresDescoped.length],
-            ['Pushed',calculator.featuresPushedCount]
+            ['Delivered',calculator.completedFeatures]
         ]
             }];
         return series;

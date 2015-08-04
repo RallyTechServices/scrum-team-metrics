@@ -1,6 +1,8 @@
 Ext.define("scrum-team-metrics", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
+    supportsUnscheduled: false,
+
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
@@ -51,6 +53,10 @@ Ext.define("scrum-team-metrics", {
         var deferred = Ext.create('Deft.Deferred'),
             rec = timebox.getRecord(),
             me = this;
+
+        if (rec == null) {
+            deferred.resolve([]);
+        }
 
         Ext.create('Rally.data.wsapi.Store',{
             model: 'Release',
@@ -116,15 +122,15 @@ Ext.define("scrum-team-metrics", {
             featureSummaryCalculator: calculator,
             title: "Feature Summary"
         });
-        summary.setWidth(top_chart_width *.30);
-        summary.setHeight(300);
+        summary.setWidth(top_chart_width *.25);
+        summary.setHeight(250);
         var delivered = top_row_ct.add({
             xtype: 'tsfeaturesdelivered',
             featureSummaryCalculator: calculator,
             title: 'Delivered'
         });
         delivered.setWidth(top_chart_width *.20);
-        delivered.setHeight(300);
+        delivered.setHeight(250);
 
 
         var accepted = top_row_ct.add({
@@ -133,19 +139,19 @@ Ext.define("scrum-team-metrics", {
             title: 'Accepted'
         });
         accepted.setWidth(top_chart_width *.20);
-        accepted.setHeight(300);
+        accepted.setHeight(250);
 
 
         var risk = top_row_ct.add({
             xtype: 'tsfeatureriskpie',
             itemId: 'feature-status',
-            title: 'Incomplete Feature Risk',
+            title: 'Feature Risk',
             featureSummaryCalculator: calculator,
             featureModelName: this.featureModelName,
             timeboxScope: this.getContext().getTimeboxScope()
         });
-        risk.setWidth(top_chart_width *.30);
-        risk.setHeight(300);
+        risk.setWidth(top_chart_width *.25);
+        risk.setHeight(250);
 
         var second_row_ct = this.down('#ct-second-row');
         var burnup_chart = second_row_ct.add({
@@ -158,7 +164,7 @@ Ext.define("scrum-team-metrics", {
             title: "Feature Burnup"
         });
         burnup_chart.setWidth(top_chart_width * .45);
-        burnup_chart.setHeight(300);
+        burnup_chart.setHeight(250);
 
         var pushed_chart = second_row_ct.add({
             xtype: 'tsfeaturespushed',
@@ -166,79 +172,9 @@ Ext.define("scrum-team-metrics", {
             title: "Features pushed from Feature Target Sprints"
         });
         pushed_chart.setWidth(top_chart_width * .45);
-        pushed_chart.setHeight(300);
-
-
-        //var start = this.getContext().getTimeboxScope().getRecord().get('ReleaseStartDate'),
-        //    end = this.getContext().getTimeboxScope().getRecord().get('ReleaseDate'),
-        //    current = new Date(),
-        //    total_days = Rally.util.DateTime.getDifference(end, start, 'day'),
-        //    elapsed_days = Math.min(Math.max(Rally.util.DateTime.getDifference(current, start, 'day'),0), total_days);
-        //
-        //var daysLeft = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'days',
-        //    value: elapsed_days,
-        //    total: total_days,
-        //    gaugeTitle: 'Elapsed',
-        //    gaugeUnits: 'Days'
-        //});
-        //
-        //var completed = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'completed',
-        //    value: calculator.completedFeatures,
-        //    total: calculator.totalFeatures,
-        //    gaugeTitle: 'Delivered',
-        //    gaugeUnits: 'Features'
-        //});
-        //
-        //var on_track = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'on_track',
-        //    value: calculator.onTrackFeatures,
-        //    total: calculator.totalFeatures,
-        //    gaugeTitle: 'On-Track',
-        //    gaugeUnits: 'Features'
-        //});
-
+        pushed_chart.setHeight(250);
 
     },
-    _fetchDoDStories: function(fields){
-        var deferred = Ext.create('Deft.Deferred');
-
-        var me = this;
-        this.logger.log("Starting load: DoD User Stories");
-
-        var filters = this.getContext().getTimeboxScope().getQueryFilter().and(
-            Ext.create('Rally.data.wsapi.Filter',{
-                property: 'c_DoDStoryType',
-                operator: '!=',
-                value: ''
-        }));
-
-        Ext.create('Rally.data.wsapi.Store', {
-            model: 'hierarchicalrequirement',
-            fetch: fields,
-            limit: Infinity,
-            filters: filters
-        }).load({
-            callback : function(records, operation, successful) {
-                me.logger.log('_fetchDoDStories load complete', successful, records.length, operation);
-                if (successful){
-                    deferred.resolve(records);
-                } else {
-                    me.logger.log("Failed: ", operation);
-                    deferred.reject('Error loading DoD User Stories: ' + operation.error.errors.join('. '));
-                }
-            }
-        });
-        return deferred.promise;
-    },
-
     getOptions: function() {
         return [
             {

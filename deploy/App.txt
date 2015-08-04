@@ -3,11 +3,11 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 04 2015 08:34:06 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Aug 04 2015 17:33:56 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 04 2015 08:34:06 GMT-0600 (MDT)";
-        var CHECKSUM = 61614394870;
+        var APP_BUILD_DATE = "Tue Aug 04 2015 17:33:56 GMT-0600 (MDT)";
+        var CHECKSUM = 56737680718;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -180,7 +180,7 @@ Ext.define('Rally.technicalservices.Color',{
     singleton: true,
 
     featureCompleteColor: '#8bbc21',
-    featureCompleteIncompleteDodColor: '#90ed7d',
+    featureCompleteIncompleteDodColor: '#a6c96a',
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
 
@@ -296,6 +296,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         context: undefined,
         featureModelName: undefined,
 
+        loadMask: false,
         /**
          * Chart configurations
          */
@@ -304,6 +305,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         calculatorType: 'Rally.technicalservices.calculator.FeatureBurnup',
         calculatorConfig: undefined,
         storeType: 'Rally.data.lookback.SnapshotStore',
+
 
         storeConfig: {
             fetch: [
@@ -359,10 +361,10 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 }
             ],
             legend: {
-                align: 'right',
+                align: 'left',
                 x: 0,
                 verticalAlign: 'top',
-                y: 25,
+                y: 30,
                 floating: true,
                 backgroundColor: 'white',
                 borderColor: '#CCC',
@@ -450,7 +452,9 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         displayColorClassificationMapping: {
             '#107c1e': 'On Track',
             '#df1a7b': 'High Risk',
-            '#fce205': 'Moderate Risk'
+            '#fce205': 'Moderate Risk',
+            '#f9a814': 'High Risk',
+            '#ee6c19': 'High Risk'
         },
         classificationChartColorMapping: {
             'On Track': Rally.technicalservices.Color.classificationOnTrack,
@@ -487,17 +491,17 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 pie: {
                     dataLabels: {
                         enabled: true,
-                        distance: 5,
+                        distance: -5,
                         style: {
                            // fontWeight: 'bold',
                             color: 'black',
                            // textShadow: '0px 1px 2px black',
-                            fontSize: '12px'
+                            fontSize: '10px'
                         },
                         format: '{point.name}: {point.y}'
                     },
                     center: ['50%', '50%'],
-                    size: '75%'
+                    size: '60%'
                 }
             }
         },
@@ -524,6 +528,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
+            console.log('color',color);
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;
@@ -776,7 +781,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 Rally.technicalservices.Color.featurePlanned,
                 Rally.technicalservices.Color.featureAdded,
                 Rally.technicalservices.Color.featureDescoped,
-                Rally.technicalservices.Color.featurePushedColor
+                Rally.technicalservices.Color.featureCompleteColor
             ],
 
             chart: {
@@ -852,7 +857,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
             ['Planned',calculator.featuresOnDay0.length],
             ['Added',calculator.featuresAdded.length],
             ['Descoped',calculator.featuresDescoped.length],
-            ['Pushed',calculator.featuresPushedCount]
+            ['Delivered',calculator.completedFeatures]
         ]
             }];
         return series;
@@ -1361,6 +1366,8 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
 Ext.define("scrum-team-metrics", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
+    supportsUnscheduled: false,
+
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
@@ -1411,6 +1418,10 @@ Ext.define("scrum-team-metrics", {
         var deferred = Ext.create('Deft.Deferred'),
             rec = timebox.getRecord(),
             me = this;
+
+        if (rec == null) {
+            deferred.resolve([]);
+        }
 
         Ext.create('Rally.data.wsapi.Store',{
             model: 'Release',
@@ -1476,15 +1487,15 @@ Ext.define("scrum-team-metrics", {
             featureSummaryCalculator: calculator,
             title: "Feature Summary"
         });
-        summary.setWidth(top_chart_width *.30);
-        summary.setHeight(300);
+        summary.setWidth(top_chart_width *.25);
+        summary.setHeight(250);
         var delivered = top_row_ct.add({
             xtype: 'tsfeaturesdelivered',
             featureSummaryCalculator: calculator,
             title: 'Delivered'
         });
         delivered.setWidth(top_chart_width *.20);
-        delivered.setHeight(300);
+        delivered.setHeight(250);
 
 
         var accepted = top_row_ct.add({
@@ -1493,19 +1504,19 @@ Ext.define("scrum-team-metrics", {
             title: 'Accepted'
         });
         accepted.setWidth(top_chart_width *.20);
-        accepted.setHeight(300);
+        accepted.setHeight(250);
 
 
         var risk = top_row_ct.add({
             xtype: 'tsfeatureriskpie',
             itemId: 'feature-status',
-            title: 'Incomplete Feature Risk',
+            title: 'Feature Risk',
             featureSummaryCalculator: calculator,
             featureModelName: this.featureModelName,
             timeboxScope: this.getContext().getTimeboxScope()
         });
-        risk.setWidth(top_chart_width *.30);
-        risk.setHeight(300);
+        risk.setWidth(top_chart_width *.25);
+        risk.setHeight(250);
 
         var second_row_ct = this.down('#ct-second-row');
         var burnup_chart = second_row_ct.add({
@@ -1518,7 +1529,7 @@ Ext.define("scrum-team-metrics", {
             title: "Feature Burnup"
         });
         burnup_chart.setWidth(top_chart_width * .45);
-        burnup_chart.setHeight(300);
+        burnup_chart.setHeight(250);
 
         var pushed_chart = second_row_ct.add({
             xtype: 'tsfeaturespushed',
@@ -1526,79 +1537,9 @@ Ext.define("scrum-team-metrics", {
             title: "Features pushed from Feature Target Sprints"
         });
         pushed_chart.setWidth(top_chart_width * .45);
-        pushed_chart.setHeight(300);
-
-
-        //var start = this.getContext().getTimeboxScope().getRecord().get('ReleaseStartDate'),
-        //    end = this.getContext().getTimeboxScope().getRecord().get('ReleaseDate'),
-        //    current = new Date(),
-        //    total_days = Rally.util.DateTime.getDifference(end, start, 'day'),
-        //    elapsed_days = Math.min(Math.max(Rally.util.DateTime.getDifference(current, start, 'day'),0), total_days);
-        //
-        //var daysLeft = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'days',
-        //    value: elapsed_days,
-        //    total: total_days,
-        //    gaugeTitle: 'Elapsed',
-        //    gaugeUnits: 'Days'
-        //});
-        //
-        //var completed = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'completed',
-        //    value: calculator.completedFeatures,
-        //    total: calculator.totalFeatures,
-        //    gaugeTitle: 'Delivered',
-        //    gaugeUnits: 'Features'
-        //});
-        //
-        //var on_track = gauge_ct.add({
-        //    xtype: 'tsgauge',
-        //    width: '33%',
-        //    itemId: 'on_track',
-        //    value: calculator.onTrackFeatures,
-        //    total: calculator.totalFeatures,
-        //    gaugeTitle: 'On-Track',
-        //    gaugeUnits: 'Features'
-        //});
-
+        pushed_chart.setHeight(250);
 
     },
-    _fetchDoDStories: function(fields){
-        var deferred = Ext.create('Deft.Deferred');
-
-        var me = this;
-        this.logger.log("Starting load: DoD User Stories");
-
-        var filters = this.getContext().getTimeboxScope().getQueryFilter().and(
-            Ext.create('Rally.data.wsapi.Filter',{
-                property: 'c_DoDStoryType',
-                operator: '!=',
-                value: ''
-        }));
-
-        Ext.create('Rally.data.wsapi.Store', {
-            model: 'hierarchicalrequirement',
-            fetch: fields,
-            limit: Infinity,
-            filters: filters
-        }).load({
-            callback : function(records, operation, successful) {
-                me.logger.log('_fetchDoDStories load complete', successful, records.length, operation);
-                if (successful){
-                    deferred.resolve(records);
-                } else {
-                    me.logger.log("Failed: ", operation);
-                    deferred.reject('Error loading DoD User Stories: ' + operation.error.errors.join('. '));
-                }
-            }
-        });
-        return deferred.promise;
-    },
-
     getOptions: function() {
         return [
             {
