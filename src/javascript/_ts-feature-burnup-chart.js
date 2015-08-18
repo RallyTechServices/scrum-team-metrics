@@ -26,12 +26,13 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         storeConfig: {
             fetch: [
                 'ObjectID',
-                'c_FeatureTargetSprint',
-                '_PreviousValues.c_FeatureTargetSprint',
+               // 'c_FeatureTargetSprint',
+               // '_PreviousValues.c_FeatureTargetSprint',
                 'Release',
                 '_PreviousValues.Release',
                 '_ValidFrom',
-                'State'
+                'State',
+                '_PreviousValues.State'
             ],
             sort: {
                 '_ValidFrom': 1
@@ -39,7 +40,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
             limit: Infinity,
             compress: true,
             removeUnauthorizedSnapshots: true,
-            hydrate: ['State']
+            hydrate: ['State','_PreviousValues.State']
         },
 
         chartConfig: {
@@ -57,14 +58,9 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 categories: [],
                 tickmarkPlacement: 'on',
                 tickInterval: 5,
-                //title: {
-                //    text: 'Date',
-                //    margin: 10
-                //},
                 labels: {
                     rotation: -45,
                     formatter: function(){
-                        console.log('this.value', this.value);
                         return Rally.util.DateTime.format(Rally.util.DateTime.fromIsoString(this.value), 'M-d');
                     }
                 }
@@ -115,33 +111,43 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
     constructor: function(config) {
         this.mergeConfig(config);
 
-        console.log('config',config);
-
         this.chartConfig.title.text = this._getTitle(config.title);
 
         var release_start_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseStartDate'), true),
             release_end_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseDate'), true);
 
-        console.log('dates', release_start_date);
         var release_oids = _.map(config.releases, function(rel){return rel.get('ObjectID')});
-
 
         this.config.calculatorConfig = {
             releaseOids: release_oids,
             completedState: config.completedState,
             startDate: release_start_date,
             endDate: release_end_date,
-            projectOid: config.context.getProject().ObjectID
+            projectOid: config.context.getProject().ObjectID,
+            timeboxScope: config.timeboxScope
         };
 
         var find = {
             _TypeHierarchy: config.featureModelName,
             _ProjectHierarchy: config.context.getProject().ObjectID,
             _ValidTo:  {$gte: release_start_date},
-            _ValidFrom: {$lte: release_end_date}
+            _ValidFrom: {$lte: release_end_date},
+             Release: {$in: release_oids}
         };
         this.storeConfig.find = find;
         this.callParent([this.config]);
+
+    },
+    _validateAggregation: function () {
+        if (!this._haveDataToRender()) {
+            return this._setErrorMessage(this.aggregationErrorMessage);
+        }
+        console.log('_validateAggregation', this.calculator);
+        this._setSubtitle(this.calculator.avgCycleTime);
+        this._renderChart();
+    },
+    _setSubtitle: function(avgCycleTime){
+        this.chartConfig.subtitle = { text:  Ext.String.format('Average Cycle Time: {0} days',avgCycleTime.toFixed(1))};
 
     },
     _getTitle: function(){

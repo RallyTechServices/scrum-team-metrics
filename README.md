@@ -37,6 +37,6 @@ Cumulative view of the total features and completed features for each day during
 Number of features pushed out of the target sprint.  Target Sprint is a custom field on the feature that is used to plan for the feature time frame.
 If a feature is pushed out of 2 target sprints, it will show up in the graph for each time it is pushed.  
 
-Notes:
+###Notes
 This app relies on the assumption that the lowest level Portfolio Item is a "Feature".  
 It also relies on the existence of certain feature and story custom fields as well as the Feature State of Done.  
