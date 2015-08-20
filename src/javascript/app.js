@@ -19,6 +19,17 @@ Ext.define("scrum-team-metrics", {
         this.callParent();
     },
     onScopeChange: function(timeboxScope){
+
+        if (this.down('#display_box')){
+            this.down('#display_box').destroy();
+        }
+        this.add({
+            xtype: 'container',
+            itemId: 'display_box',
+            width: '100%',
+            layout:'vbox'
+        });
+
         this.setLoading(true);
         this._fetchReleases(timeboxScope).then({
             scope: this,
@@ -86,34 +97,26 @@ Ext.define("scrum-team-metrics", {
     },
     _displayMetrics: function(calculator){
         var ct = this.down('#display_box');
-        if (ct){
-            ct.destroy();
-        }
-        ct = this.add({
-            xtype: 'container',
-            itemId: 'display_box',
-            width: '100%',
-            layout:'vbox',
-            items: [{
+
+        var top_row_ct = ct.add({
                 xtype: 'container',
                 itemId: 'ct-first-row',
                 layout: {type: 'hbox'},
                 bodyPadding: 20,
                 flex: 1,
                 border: false
-            },{
+            });
+        var second_row_ct = ct.add({
                 xtype: 'container',
                 itemId: 'ct-second-row',
                 layout: {type: 'hbox'},
                 bodyPadding: 20,
                 flex: 1,
                 border: false
-            }]
         });
 
         this.logger.log('_displayMetrics')
-        var top_row_ct = this.down('#ct-first-row'),
-            top_chart_width = this.getWidth();
+        var top_chart_width = this.getWidth();
 
         this.logger.log('width', top_chart_width);
         var summary = top_row_ct.add({
@@ -152,7 +155,6 @@ Ext.define("scrum-team-metrics", {
         risk.setWidth(top_chart_width *.25);
         risk.setHeight(250);
 
-        var second_row_ct = this.down('#ct-second-row');
         var burnup_chart = second_row_ct.add({
             xtype: 'tsfeatureburnup',
             timeboxScope: this.getContext().getTimeboxScope(),
