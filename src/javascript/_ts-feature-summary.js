@@ -63,7 +63,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
     },
     constructor: function(config) {
         this.mergeConfig(config);
-        console.log('tsfeaturesummary')
 
         this.chartData.series = this._getSeries(config.featureSummaryCalculator);
         this.chartConfig.title.text = this._getTitle();
@@ -79,7 +78,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
     },
 
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var categories = ['Total','Planned','Added','Descoped','Delivered'],
             deployable_data = [0,0,0,0,0],
@@ -114,12 +112,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 data: non_deployable_data
             }];
 
-        console.log('chartData',categories, series);
-            //['Total', calculator.featuresCurrentOrOnLastDayOfRelease.length],
-            //['Planned',calculator.featuresOnDay0.length],
-            //['Added',calculator.featuresAdded.length],
-            //['Descoped',calculator.featuresDescoped.length],
-            //['Delivered',calculator.completedFeatures]
         return series;
     },
     _setChartColorsOnSeries: function () {

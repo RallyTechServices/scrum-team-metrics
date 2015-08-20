@@ -87,7 +87,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                 deferred.resolve();
             },
             failure: function(msg){
-                console.log('failure', msg);
+                deferred.reject(msg);
             }
         });
         return deferred;
@@ -122,7 +122,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
 
         this.deployableFeatures = deployable;
         this.nonDeployableFeatures = non_deployable;
-        console.log('_setDeployableFeatures', this.deployableFeatures, this.nonDeployableFeatures);
 
     },
     _fetchFeatureColors: function(){

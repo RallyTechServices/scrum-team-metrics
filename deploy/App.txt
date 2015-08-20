@@ -3,11 +3,11 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 18 2015 11:04:23 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Aug 19 2015 23:48:17 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 18 2015 11:04:23 GMT-0600 (MDT)";
-        var CHECKSUM = 72357726666;
+        var APP_BUILD_DATE = "Wed Aug 19 2015 23:48:17 GMT-0600 (MDT)";
+        var CHECKSUM = 68165342794;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -80,7 +80,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
                 text = response.responseText;
                 if ( CHECKSUM ) {
                     if ( CHECKSUM !== me._generateChecksum(text) ) {
-                        console.log("Checksums don't match!");
                         deferred.resolve(false);
                         return;
                     }
@@ -108,9 +107,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
                             html:'<span class="icon-warning"> </span>Checksums do not match'
                         });
                     }
-                },
-                failure: function(msg){
-                    console.log("oops:",msg);
                 }
             });
         } else {
@@ -184,7 +180,7 @@ Ext.define('Rally.technicalservices.Color',{
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
     featureDeployedColor: '#80699B',
-    featureNondeployedColor: '#492970',
+    featureNondeployedColor: '#92A8CD',
 
     featurePlanned: '#90ed7d',
     featureAdded:'#8085e9',
@@ -339,7 +335,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureBurnup',{
                     durations.push(Rally.util.DateTime.getDifference(new Date(end_date), new Date(start_date), 'day'));
                 }
             });
-            console.log('cycle-times', Ext.Array.mean(durations), cycle_times, snaps_by_oid);
 
             this.avgCycleTime = Ext.Array.mean(durations);
 
@@ -490,7 +485,6 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         if (!this._haveDataToRender()) {
             return this._setErrorMessage(this.aggregationErrorMessage);
         }
-        console.log('_validateAggregation', this.calculator);
         this._setSubtitle(this.calculator.avgCycleTime);
         this._renderChart();
     },
@@ -592,13 +586,12 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         this.setWidth(300);
     },
     _getSeries: function(records){
-        console.log('_getSeries', records);
+
         var color_data = {},
             data = [];
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
-            console.log('color',color);
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;
@@ -722,7 +715,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                 deferred.resolve();
             },
             failure: function(msg){
-                console.log('failure', msg);
+                deferred.reject(msg);
             }
         });
         return deferred;
@@ -757,7 +750,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
 
         this.deployableFeatures = deployable;
         this.nonDeployableFeatures = non_deployable;
-        console.log('_setDeployableFeatures', this.deployableFeatures, this.nonDeployableFeatures);
 
     },
     _fetchFeatureColors: function(){
@@ -936,7 +928,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
     },
     constructor: function(config) {
         this.mergeConfig(config);
-        console.log('tsfeaturesummary')
 
         this.chartData.series = this._getSeries(config.featureSummaryCalculator);
         this.chartConfig.title.text = this._getTitle();
@@ -952,7 +943,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
     },
 
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var categories = ['Total','Planned','Added','Descoped','Delivered'],
             deployable_data = [0,0,0,0,0],
@@ -987,12 +977,6 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 data: non_deployable_data
             }];
 
-        console.log('chartData',categories, series);
-            //['Total', calculator.featuresCurrentOrOnLastDayOfRelease.length],
-            //['Planned',calculator.featuresOnDay0.length],
-            //['Added',calculator.featuresAdded.length],
-            //['Descoped',calculator.featuresDescoped.length],
-            //['Delivered',calculator.completedFeatures]
         return series;
     },
     _setChartColorsOnSeries: function () {
@@ -1060,7 +1044,6 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         this.setWidth(300);
     },
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var data = [{
             name: 'Delivered',
@@ -1177,8 +1160,7 @@ Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
     },
 
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
-        var sprint_hash = calculator.featurePushedSprintHash,
+       var sprint_hash = calculator.featurePushedSprintHash,
             data = [];
 
         _.each(calculator.featurePushedSprintHash, function(count, sprint){
@@ -1216,7 +1198,6 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
             removeUnauthorizedSnapshots: true
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',success, records ,operation);
                 if (success){
                     deferred.resolve(operation.resultSet.totalRecords);
                 } else {
@@ -1243,7 +1224,6 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
             removeUnauthorizedSnapshots: true
         }).load({
             callback: function(records, operation, success){
-                console.log('fetchLookbackRecords callback',success, records ,operation);
                 if (success){
                     deferred.resolve(records);
                 } else {
@@ -1419,7 +1399,6 @@ Ext.define('Rally.technicalservices.chart.StoriesAccepted', {
         this.setWidth(300);
     },
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var data = [{
             name: 'Accepted',
@@ -1439,7 +1418,6 @@ Ext.define('Rally.technicalservices.chart.StoriesAccepted', {
         }];
     },
     _getTitle: function(calculator){
-        console.log('gettitle',calculator);
         var pct_accepted = Number(calculator.storiesAcceptedCounts.Accepted/calculator.storiesAcceptedCounts.Total * 100).toFixed(1);
 
         return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
@@ -1466,7 +1444,6 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
             pageSize: 1
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',query_filters.toString(),operation);
                 if (success){
                     deferred.resolve(operation.resultSet.totalRecords);
                 } else {
@@ -1486,8 +1463,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
             limit: Infinity
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',query_filters.toString(),operation);
-                if (success){
+               if (success){
                     deferred.resolve(records);
                 } else {
                     deferred.reject(Ext.String.format("Error getting {0} for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));
@@ -1588,29 +1564,28 @@ Ext.define("scrum-team-metrics", {
         var ct = this.down('#display_box');
         if (ct){
             ct.destroy();
-        } else {
-            ct = this.add({
-                xtype: 'container',
-                itemId: 'display_box',
-                width: '100%',
-                layout:'vbox',
-                items: [{
-                    xtype: 'container',
-                    itemId: 'ct-first-row',
-                    layout: {type: 'hbox'},
-                    bodyPadding: 20,
-                    flex: 1,
-                    border: false
-                },{
-                    xtype: 'container',
-                    itemId: 'ct-second-row',
-                    layout: {type: 'hbox'},
-                    bodyPadding: 20,
-                    flex: 1,
-                    border: false
-                }]
-            });
         }
+        ct = this.add({
+            xtype: 'container',
+            itemId: 'display_box',
+            width: '100%',
+            layout:'vbox',
+            items: [{
+                xtype: 'container',
+                itemId: 'ct-first-row',
+                layout: {type: 'hbox'},
+                bodyPadding: 20,
+                flex: 1,
+                border: false
+            },{
+                xtype: 'container',
+                itemId: 'ct-second-row',
+                layout: {type: 'hbox'},
+                bodyPadding: 20,
+                flex: 1,
+                border: false
+            }]
+        });
 
         this.logger.log('_displayMetrics')
         var top_row_ct = this.down('#ct-first-row'),

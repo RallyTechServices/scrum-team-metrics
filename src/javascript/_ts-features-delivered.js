@@ -57,7 +57,6 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         this.setWidth(300);
     },
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var data = [{
             name: 'Delivered',

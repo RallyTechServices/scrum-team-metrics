@@ -97,7 +97,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureBurnup',{
                     durations.push(Rally.util.DateTime.getDifference(new Date(end_date), new Date(start_date), 'day'));
                 }
             });
-            console.log('cycle-times', Ext.Array.mean(durations), cycle_times, snaps_by_oid);
 
             this.avgCycleTime = Ext.Array.mean(durations);
 

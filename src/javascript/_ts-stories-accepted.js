@@ -56,7 +56,6 @@ Ext.define('Rally.technicalservices.chart.StoriesAccepted', {
         this.setWidth(300);
     },
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var data = [{
             name: 'Accepted',
@@ -76,7 +75,6 @@ Ext.define('Rally.technicalservices.chart.StoriesAccepted', {
         }];
     },
     _getTitle: function(calculator){
-        console.log('gettitle',calculator);
         var pct_accepted = Number(calculator.storiesAcceptedCounts.Accepted/calculator.storiesAcceptedCounts.Total * 100).toFixed(1);
 
         return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +

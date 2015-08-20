@@ -3,10 +3,10 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 18 2015 11:04:23 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Aug 19 2015 23:48:17 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 18 2015 11:04:23 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Wed Aug 19 2015 23:48:17 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     

@@ -142,7 +142,6 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         if (!this._haveDataToRender()) {
             return this._setErrorMessage(this.aggregationErrorMessage);
         }
-        console.log('_validateAggregation', this.calculator);
         this._setSubtitle(this.calculator.avgCycleTime);
         this._renderChart();
     },

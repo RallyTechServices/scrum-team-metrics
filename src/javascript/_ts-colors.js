@@ -6,7 +6,7 @@ Ext.define('Rally.technicalservices.Color',{
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
     featureDeployedColor: '#80699B',
-    featureNondeployedColor: '#492970',
+    featureNondeployedColor: '#92A8CD',
 
     featurePlanned: '#90ed7d',
     featureAdded:'#8085e9',

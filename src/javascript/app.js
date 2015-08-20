@@ -88,29 +88,28 @@ Ext.define("scrum-team-metrics", {
         var ct = this.down('#display_box');
         if (ct){
             ct.destroy();
-        } else {
-            ct = this.add({
-                xtype: 'container',
-                itemId: 'display_box',
-                width: '100%',
-                layout:'vbox',
-                items: [{
-                    xtype: 'container',
-                    itemId: 'ct-first-row',
-                    layout: {type: 'hbox'},
-                    bodyPadding: 20,
-                    flex: 1,
-                    border: false
-                },{
-                    xtype: 'container',
-                    itemId: 'ct-second-row',
-                    layout: {type: 'hbox'},
-                    bodyPadding: 20,
-                    flex: 1,
-                    border: false
-                }]
-            });
         }
+        ct = this.add({
+            xtype: 'container',
+            itemId: 'display_box',
+            width: '100%',
+            layout:'vbox',
+            items: [{
+                xtype: 'container',
+                itemId: 'ct-first-row',
+                layout: {type: 'hbox'},
+                bodyPadding: 20,
+                flex: 1,
+                border: false
+            },{
+                xtype: 'container',
+                itemId: 'ct-second-row',
+                layout: {type: 'hbox'},
+                bodyPadding: 20,
+                flex: 1,
+                border: false
+            }]
+        });
 
         this.logger.log('_displayMetrics')
         var top_row_ct = this.down('#ct-first-row'),

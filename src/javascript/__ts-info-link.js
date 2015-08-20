@@ -63,7 +63,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
                 text = response.responseText;
                 if ( CHECKSUM ) {
                     if ( CHECKSUM !== me._generateChecksum(text) ) {
-                        console.log("Checksums don't match!");
                         deferred.resolve(false);
                         return;
                     }
@@ -91,9 +90,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
                             html:'<span class="icon-warning"> </span>Checksums do not match'
                         });
                     }
-                },
-                failure: function(msg){
-                    console.log("oops:",msg);
                 }
             });
         } else {

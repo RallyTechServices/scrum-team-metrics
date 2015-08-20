@@ -11,7 +11,6 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
             pageSize: 1
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',query_filters.toString(),operation);
                 if (success){
                     deferred.resolve(operation.resultSet.totalRecords);
                 } else {
@@ -31,8 +30,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
             limit: Infinity
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',query_filters.toString(),operation);
-                if (success){
+               if (success){
                     deferred.resolve(records);
                 } else {
                     deferred.reject(Ext.String.format("Error getting {0} for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));

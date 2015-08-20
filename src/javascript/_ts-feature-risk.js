@@ -77,13 +77,12 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         this.setWidth(300);
     },
     _getSeries: function(records){
-        console.log('_getSeries', records);
+
         var color_data = {},
             data = [];
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
-            console.log('color',color);
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;
