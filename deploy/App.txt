@@ -3,11 +3,11 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Aug 19 2015 23:52:37 GMT-0600 (MDT) -->
+    <!--  Build Date: Mon Aug 24 2015 11:47:24 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Aug 19 2015 23:52:37 GMT-0600 (MDT)";
-        var CHECKSUM = 68163485137;
+        var APP_BUILD_DATE = "Mon Aug 24 2015 11:47:24 GMT-0700 (PDT)";
+        var CHECKSUM = 69152000792;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -62,7 +62,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
         for (i = 0; i < string.length; i++) {
             chk += (string.charCodeAt(i) * i);
         }
-    
         return chk;
     },
     
@@ -137,7 +136,7 @@ Ext.define('Rally.technicalservices.InfoLink',{
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team."
+            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
         });
         
         if ( APP_BUILD_DATE ) {
@@ -365,7 +364,6 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         calculatorConfig: undefined,
         storeType: 'Rally.data.lookback.SnapshotStore',
 
-
         storeConfig: {
             fetch: [
                 'ObjectID',
@@ -395,7 +393,8 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
             },
             title: {
                 text: '',
-                useHTML: true
+                useHTML: true,
+                align: 'center'
             },
             xAxis: {
                 categories: [],
@@ -416,11 +415,16 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 }
             ],
             legend: {
-                align: 'left',
-                x: 0,
+                layout: 'vertical',
+                align: 'right',
                 verticalAlign: 'top',
-                y: 30,
+           
                 floating: true,
+               // align: 'center',
+                //x: 0,
+               // verticalAlign: 'bottom',
+              //  y: 30,
+              //  floating: true,
                 backgroundColor: 'white',
                 borderColor: '#CCC',
                 borderWidth: 1,

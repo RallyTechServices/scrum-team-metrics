@@ -45,7 +45,6 @@ Ext.define('Rally.technicalservices.InfoLink',{
         for (i = 0; i < string.length; i++) {
             chk += (string.charCodeAt(i) * i);
         }
-    
         return chk;
     },
     
@@ -120,7 +119,7 @@ Ext.define('Rally.technicalservices.InfoLink',{
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team."
+            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
         });
         
         if ( APP_BUILD_DATE ) {
