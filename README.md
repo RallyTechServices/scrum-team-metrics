@@ -42,6 +42,8 @@ Cumulative view of the total features and completed features for each day during
 Number of features pushed out of the target sprint.  Target Sprint is a custom field on the feature that is used to plan for the feature time frame.
 If a feature is pushed out of 2 target sprints, it will show up in the graph for each time it is pushed.  
 
+#####Feature Cycle Time
+Currently, this is calculated as the difference in time from either the Release Start Date (if the feature was associated with the release on the first day of the release), or the day the feature was added to the release (if after the Release Start Date) to the (latest) day that the feature is transitioned into the Done state. 
 
 
 ###Notes
