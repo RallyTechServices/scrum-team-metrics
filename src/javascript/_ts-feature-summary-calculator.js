@@ -7,7 +7,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         releases: undefined
     },
     displayColorsOfRisk: undefined,
-    notCalculated: -1,
+    notCalculated: 0,
     pushedField: 'c_FeatureTargetSprint',
 
     /**
@@ -19,7 +19,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
     /**
      * Features associated with the current Release that are currently in the completedState
      */
-    completedFeatures: undefined,
+    featuresCompleted: undefined,
     totalFeatures: undefined,
     plannedFeatures: undefined,
     pushedFeatures: undefined,
@@ -56,7 +56,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
     calculate: function(){
         var deferred = Ext.create('Deft.Deferred'),
             release_oids = _.map(this.releases, function(r){return r.get('ObjectID')}),
-            fetch = ['ObjectID'];
+            fetch = ['ObjectID','c_FeatureDeploymentType'];
 
         var promises = [
             Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(this._getStartFind(release_oids), fetch),
@@ -75,20 +75,54 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                 this.featuresCurrentOrOnLastDayOfRelease = _.map(results[1], function(r){return r.get('ObjectID')}),
                 this.featuresDescoped = Ext.Array.difference(this.featuresOnDay0, this.featuresCurrentOrOnLastDayOfRelease),
                 this.featuresAdded = Ext.Array.difference(this.featuresCurrentOrOnLastDayOfRelease, this.featuresOnDay0);
-                this.completedFeatures = results[2] || this.notCalculated;
+                this.featuresCompleted = _.map(results[2], function(r){ return r.get('ObjectID')});
                 this.featureColorData = results[3];
 
                 this.doneFeaturesWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[4]);
                 this.featuresPushedCount = this._getFeaturesPushedCount(results[5]);
                 this.storiesAcceptedCounts = results[6];
-                console.log('results',results)
+
+                this._setDeployableFeatures(results[0],results[1]);
+
                 deferred.resolve();
             },
             failure: function(msg){
-                console.log('failure', msg);
+                deferred.reject(msg);
             }
         });
         return deferred;
+    },
+    _setDeployableFeatures: function(day0Features, currentFeatures){
+        var non_deployable = [],
+            deployable = [];
+
+
+         _.each(currentFeatures, function(f){
+            var deployment_type = f.get('c_FeatureDeploymentType');
+            if (deployment_type && /^N\/A/.test(deployment_type)){
+                non_deployable.push(f.get('ObjectID'));
+            } else {
+                deployable.push(f.get('ObjectID'));
+            }
+        });
+
+        _.each(day0Features, function(f){
+            var deployment_type = f.get('c_FeatureDeploymentType'),
+                oid = f.get('ObjectID');
+            if (!Ext.Array.contains(deployable, oid) &&
+                    !Ext.Array.contains(non_deployable, oid)){
+
+                if (/^N\/A/.test(deployment_type)){
+                    non_deployable.push(oid);
+                } else {
+                    deployable.push(oid);
+                }
+            }
+        });
+
+        this.deployableFeatures = deployable;
+        this.nonDeployableFeatures = non_deployable;
+
     },
     _fetchFeatureColors: function(){
         var filters = this.timeboxScope.getQueryFilter(),
@@ -103,7 +137,8 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName, filters, fetch);
     },
     _fetchFeaturesComplete: function(){
-        var filters = this.timeboxScope.getQueryFilter();
+        var filters = this.timeboxScope.getQueryFilter(),
+            fetch = ['ObjectID'];
 
         filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
             property: 'State.Name',
@@ -111,7 +146,8 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
             value: this.completedState
         }));
 
-        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName, filters, fetch);
+//        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
     },
     _fetchFeaturesPushed: function(){
         var release_oids = _.map(this.releases, function(rel){return rel.get('ObjectID')});
@@ -153,7 +189,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                 features = Ext.Array.merge(features, [r.get('Feature').ObjectID]);
             }
         });
-        console.log('features', features);
         return features.length;
     },
     _getFeaturesPushedCount: function(records){
@@ -174,7 +209,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
             });
         });
 
-        console.log('snaps', sprints, pushed_features);
         this.featurePushedSprintHash = sprints;
         return pushed_features.length;
     },
@@ -192,7 +226,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                     total_count += r.get('LeafStoryCount') || 0;
                     accepted_count += r.get('AcceptedLeafStoryCount') || 0;
                 });
-                console.log('storie accpeted counts',{Accepted: accepted_count, Total: total_count} );
                 deferred.resolve({Accepted: accepted_count, Total: total_count})
             }
         });

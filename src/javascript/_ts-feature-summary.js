@@ -8,11 +8,8 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
 
         chartConfig: {
             colors: [
-                Rally.technicalservices.Color.featureTotalColor,
-                Rally.technicalservices.Color.featurePlanned,
-                Rally.technicalservices.Color.featureAdded,
-                Rally.technicalservices.Color.featureDescoped,
-                Rally.technicalservices.Color.featureCompleteColor
+                Rally.technicalservices.Color.featureDeployedColor,
+                Rally.technicalservices.Color.featureNonDeployedColor
             ],
 
             chart: {
@@ -44,15 +41,17 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 enabled: false
             },
             plotOptions: {
-                column: {
-                    stacking: 'normal',
-                    colorByPoint: true
-                },
                 series: {
                     borderWidth: 0,
                     dataLabels: {
-                        enabled: false,
-                        format: '{point.y}'
+                        formatter: function(){
+
+                        }
+                    },
+                    stacking: "normal",
+                    tooltip: {
+                        pointFormat: '{series.name}: <b>{point.y}</b>'
+
                     }
                 }
             }
@@ -79,18 +78,40 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
     },
 
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
+
+        var categories = ['Total','Planned','Added','Descoped','Delivered'],
+            deployable_data = [0,0,0,0,0],
+            non_deployable_data = [0,0,0,0,0];
+
+        if (calculator.deployableFeatures && calculator.deployableFeatures.length > 0){
+            deployable_data = [
+                _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.deployableFeatures).length,
+                _.intersection(calculator.featuresOnDay0 || [], calculator.deployableFeatures).length,
+                _.intersection(calculator.featuresAdded || [], calculator.deployableFeatures).length,
+                _.intersection(calculator.featuresDescoped || [], calculator.deployableFeatures).length,
+                _.intersection(calculator.featuresCompleted || [], calculator.deployableFeatures).length
+            ];
+        }
+
+        if (calculator.nonDeployableFeatures && calculator.nonDeployableFeatures.length > 0){
+            non_deployable_data = [
+                _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.nonDeployableFeatures).length,
+                _.intersection(calculator.featuresOnDay0 || [], calculator.nonDeployableFeatures).length,
+                _.intersection(calculator.featuresAdded || [], calculator.nonDeployableFeatures).length,
+                _.intersection(calculator.featuresDescoped || [], calculator.nonDeployableFeatures).length,
+                _.intersection(calculator.featuresCompleted || [], calculator.nonDeployableFeatures).length
+            ];
+        }
+        this.chartData.categories = categories;
 
         var series =  [{
-            name: 'Snapshot',
-            data: [
-            ['Total', calculator.featuresCurrentOrOnLastDayOfRelease.length],
-            ['Planned',calculator.featuresOnDay0.length],
-            ['Added',calculator.featuresAdded.length],
-            ['Descoped',calculator.featuresDescoped.length],
-            ['Delivered',calculator.completedFeatures]
-        ]
+                name: 'Deployable',
+                data: deployable_data
+            }, {
+                name: 'Non-Deployable',
+                data: non_deployable_data
             }];
+
         return series;
     },
     _setChartColorsOnSeries: function () {

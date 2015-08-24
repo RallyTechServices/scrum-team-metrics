@@ -57,11 +57,10 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         this.setWidth(300);
     },
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
 
         var data = [{
             name: 'Delivered',
-            y: calculator.completedFeatures - calculator.doneFeaturesWithIncompleteDoD,
+            y: calculator.featuresCompleted.length - calculator.doneFeaturesWithIncompleteDoD,
             color: Rally.technicalservices.Color.featureCompleteColor
         },{
             name: 'Delivered (Incompleted DoD)',
@@ -69,7 +68,8 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
             color: Rally.technicalservices.Color.featureCompleteIncompleteDodColor
         },{
             name: 'Not Delivered',
-            y: calculator.featuresCurrentOrOnLastDayOfRelease.length - (calculator.completedFeatures),
+           // y: calculator.featuresCurrentOrOnLastDayOfRelease.length - (calculator.completedFeatures),
+            y: calculator.featuresOnDay0.length - (calculator.featuresCompleted.length),
             color: Rally.technicalservices.Color.featureTotalColor
         }];
 
@@ -81,8 +81,9 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         }];
     },
     _getTitle: function(){
-        var pct_features_delivered = Number(this.featureSummaryCalculator.completedFeatures/this.featureSummaryCalculator.featuresCurrentOrOnLastDayOfRelease.length * 100).toFixed(1),
-            pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD/this.featureSummaryCalculator.featuresCurrentOrOnLastDayOfRelease.length * 100).toFixed(1);
+        var completed_features = this.featureSummaryCalculator.featuresCompleted.length,
+            pct_features_delivered = Number(completed_features/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1),
+            pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1);
 
         return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
             '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +

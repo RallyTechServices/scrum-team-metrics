@@ -72,8 +72,7 @@ Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
     },
 
     _getSeries: function(calculator){
-        console.log('_getSeries', calculator);
-        var sprint_hash = calculator.featurePushedSprintHash,
+       var sprint_hash = calculator.featurePushedSprintHash,
             data = [];
 
         _.each(calculator.featurePushedSprintHash, function(count, sprint){

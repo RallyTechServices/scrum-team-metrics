@@ -12,7 +12,6 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
             removeUnauthorizedSnapshots: true
         }).load({
             callback: function(records, operation, success){
-                console.log('getCount callback',success, records ,operation);
                 if (success){
                     deferred.resolve(operation.resultSet.totalRecords);
                 } else {
@@ -39,7 +38,6 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
             removeUnauthorizedSnapshots: true
         }).load({
             callback: function(records, operation, success){
-                console.log('fetchLookbackRecords callback',success, records ,operation);
                 if (success){
                     deferred.resolve(records);
                 } else {
