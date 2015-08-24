@@ -76,7 +76,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 layout: 'vertical',
                 align: 'right',
                 verticalAlign: 'top',
-           
+
                 floating: true,
                // align: 'center',
                 //x: 0,

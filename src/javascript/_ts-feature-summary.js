@@ -23,9 +23,9 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 align: 'center',
                 useHTML: true
             },
-            tooltip: {
-                pointFormat: '<b>{point.y}</b>'
-            },
+            //tooltip: {
+            //    pointFormat: '<b>{point.y}</b>'
+            //},
             xAxis: {
                 type: 'category',
                 labels: {
@@ -40,19 +40,16 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
             legend: {
                 enabled: false
             },
+            tooltip: {
+                formatter: function () {
+                    return this.series.name + ': ' + this.y + '<br/>' +
+                        'Total: ' + this.point.stackTotal;
+                }
+            },
             plotOptions: {
                 series: {
                     borderWidth: 0,
-                    dataLabels: {
-                        formatter: function(){
-
-                        }
-                    },
-                    stacking: "normal",
-                    tooltip: {
-                        pointFormat: '{series.name}: <b>{point.y}</b>'
-
-                    }
+                    stacking: "normal"
                 }
             }
         },

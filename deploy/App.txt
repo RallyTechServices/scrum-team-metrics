@@ -3,11 +3,11 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 24 2015 11:47:24 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 24 2015 11:58:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 24 2015 11:47:24 GMT-0700 (PDT)";
-        var CHECKSUM = 69152000792;
+        var APP_BUILD_DATE = "Mon Aug 24 2015 11:58:59 GMT-0700 (PDT)";
+        var CHECKSUM = 69213433880;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -179,7 +179,7 @@ Ext.define('Rally.technicalservices.Color',{
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
     featureDeployedColor: '#80699B',
-    featureNondeployedColor: '#92A8CD',
+    featureNonDeployedColor: '#333333',
 
     featurePlanned: '#90ed7d',
     featureAdded:'#8085e9',
@@ -418,7 +418,7 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
                 layout: 'vertical',
                 align: 'right',
                 verticalAlign: 'top',
-           
+
                 floating: true,
                // align: 'center',
                 //x: 0,
@@ -892,9 +892,9 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 align: 'center',
                 useHTML: true
             },
-            tooltip: {
-                pointFormat: '<b>{point.y}</b>'
-            },
+            //tooltip: {
+            //    pointFormat: '<b>{point.y}</b>'
+            //},
             xAxis: {
                 type: 'category',
                 labels: {
@@ -909,19 +909,16 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
             legend: {
                 enabled: false
             },
+            tooltip: {
+                formatter: function () {
+                    return this.series.name + ': ' + this.y + '<br/>' +
+                        'Total: ' + this.point.stackTotal;
+                }
+            },
             plotOptions: {
                 series: {
                     borderWidth: 0,
-                    dataLabels: {
-                        formatter: function(){
-
-                        }
-                    },
-                    stacking: "normal",
-                    tooltip: {
-                        pointFormat: '{series.name}: <b>{point.y}</b>'
-
-                    }
+                    stacking: "normal"
                 }
             }
         },
