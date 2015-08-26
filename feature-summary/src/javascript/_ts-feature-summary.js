@@ -33,14 +33,15 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 }
             },
             legend: {
-                //layout: 'vertical',
+                layout: 'vertical',
                 align: 'right',
                 verticalAlign: 'bottom',
                 floating: true,
-                y: 10
+                y: -30
             },
             tooltip: {
                 formatter: function () {
+
                     return this.series.name + ': ' + this.y + '<br/>' +
                         'Total: ' + this.point.stackTotal;
                 }

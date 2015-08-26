@@ -23,7 +23,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             xAxis: {
                 type: 'category',
                 labels: {
-                    rotation: -60,
+                    //rotation: -60,
                     style: {
                         fontSize: '11px',
                         fontFamily: 'Verdana, sans-serif'
@@ -47,15 +47,37 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             },
             tooltip: {
                 formatter: function () {
-                    return this.x + '<br/>' + this.series.name + ': ' + this.y + '<br/>' +
-                        'Total: ' + this.point.stackTotal;
+                    var total = 0,
+                        x = this.point.x,
+                        descoped = 0,
+                        y = this.y;
+
+                    _.each(this.series.chart.series, function(s){
+                         if (s.name == "Descoped"){
+                            descoped = s.yData[x];
+                        } else {
+                            total += s.yData[x];
+                        }
+                    });
+
+                    if (this.series.name == "Descoped"){
+                        y = -descoped;
+                    }
+
+                    if (this.series.name == "Planned"){
+                        y = y - descoped;
+                    }
+
+                    return this.x + '<br/>' + this.series.name + ': ' + y + '<br/>' +
+                        'Total: ' + total;
                 }
             },
             legend: {
-                //layout: 'vertical',
+                layout: 'vertical',
                 align: 'right',
-                verticalAlign: 'top',
-                floating: true
+                verticalAlign: 'bottom',
+                floating: true,
+                y: -30
             }
         },
         chartData: {
@@ -134,23 +156,23 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
 
         console.log('---',categories, planned_data, descoped_data,added_data, done_data);
         var series =  [{
-            name: 'Planned',
-            type: 'column',
-            data: planned_data,
-          //  stack: 'total'
-        },{
             name: 'Added',
-            type: 'column',
+            type: 'bar',
             data: added_data,
            // stack: 'total'
         },{
-            name: 'Descoped',
-            type: 'column',
-            data: descoped_data
+            name: 'Planned',
+            type: 'bar',
+            data: planned_data,
+            //  stack: 'total'
         },{
-            name: 'Done',
-            type: 'spline',
-            data: done_data
+            name: 'Descoped',
+            type: 'bar',
+            data: descoped_data
+        //},{
+        //    name: 'Done',
+        //    type: 'spline',
+        //    data: done_data
         }];
 
         return series;

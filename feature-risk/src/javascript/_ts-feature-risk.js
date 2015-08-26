@@ -10,6 +10,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     },
     height: 300,
     border: 0,
+    layout: {type: 'vbox'},
     displayColorClassificationMapping: {
         '#107c1e': 'On Track',
         '#df1a7b': 'High Risk',
@@ -34,12 +35,36 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         this._fetchFeatureColors().then({
             scope: this,
             success: function(records){
-                this._showTeamView(records);
+                this.records = records;
+                this.add({
+                    xtype: 'rallybutton',
+                    text: 'Team View',
+                    cls: 'secondary rly-small',
+                    listeners: {
+                        scope: this,
+                        click: this._changeView
+                    }
+                });
+                this._showSummaryView(records);
             },
             failure: function(msg){
 
             }
         });
+    },
+    _changeView: function(btn){
+        if (this.down('rallychart')){
+            this.down('rallychart').destroy();
+        }
+
+        if (btn.text == "Team View"){
+            this._showTeamView(this.records);
+            btn.setText("< Back to Summary");
+
+        } else {
+            this._showSummaryView(this.records);
+            btn.setText("Team View");
+        }
     },
     _showSummaryView: function(records){
 
@@ -49,23 +74,24 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             chartConfig: this._getSummaryChartConfig(),
             chartData: this._getSummaryChartData(records)
         });
-        chart.setHeight(this.height);
+        chart.setHeight(this.height - 25);
+        chart.setWidth(this.width);
     },
     _showTeamView: function(records){
-
         var chart_data = this._getTeamChartData(records);
 
         var chart = this.add({
             xtype: 'rallychart',
             loadMask: false,
-            chartConfig: this._getTeamChartConfig(chart_data.categories),
+            chartConfig: this._getTeamChartConfig(),
             chartData: chart_data,
             _setChartColorsOnSeries: function (series) {
                 return null;
             }
 
         });
-        chart.setHeight(this.height);
+        chart.setHeight(this.height - 25);
+        chart.setWidth(this.width);
     },
     _getSummaryChartData: function(records){
 
@@ -101,6 +127,9 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         };
     },
     _getSummaryChartConfig: function(){
+        var x = this.width * .35,
+            y = this.height * .25 + 25;
+            console.log('x,y', this.width, this.height, x, y);
         return  {
             colors: [
                 Rally.technicalservices.Color.classificationOnTrack,
@@ -125,20 +154,20 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 pie: {
                     dataLabels: {
                         enabled: true,
-                        distance: -5,
+                        distance: -3,
                         style: {
                             color: 'black',
                             fontSize: '10px'
                         },
                         format: '{point.name}: {point.y}'
                     },
-                    center: ['50%', '50%'],
-                    size: '60%'
+                    center: [x, y],
+                    size: '50%'
                 }
             }
         };
     },
-    _getTeamChartConfig: function(categories) {
+    _getTeamChartConfig: function() {
         return  {
             colors: [
                 Rally.technicalservices.Color.classificationOnTrack,
@@ -155,7 +184,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             },
             tooltip: {
                 formatter: function(){
-                    return Ext.String.format('{0}<br/>{1}: <b>{2}%</b>',this.x, this.series.name, Number(this.point.y).toFixed(1));
+                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Number(this.point.y));
                 }
             },
             xAxis: {
@@ -167,9 +196,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 }
             },
             yAxis: {
-                title: { text: '%'},
-                max: 100,
-                min: 0
+                title: { text: '# Features'}
             },
             plotOptions: {
                 bar: {
@@ -180,6 +207,9 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 series: {
                     stacking: 'normal'
                 }
+            },
+            legend: {
+                enabled: false
             }
         };
     },
@@ -220,7 +250,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             _.each(categories, function(ct){
                 var total = Ext.Array.sum(_.reject(_.values(project_hash[ct]), function(val){ return isNaN(val);}));
                 if (total > 0){
-                    data[cl].push(project_hash[ct][cl]/total * 100);
+                    data[cl].push(project_hash[ct][cl]);
                 } else {
                     data[cl].push(0);
                 }
@@ -234,7 +264,6 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             });
         }, this);
 
-        console.log('categories', categories, series);
         return {
             categories: categories,
             series: series
