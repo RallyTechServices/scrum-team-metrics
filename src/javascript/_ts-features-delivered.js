@@ -68,8 +68,7 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
             color: Rally.technicalservices.Color.featureCompleteIncompleteDodColor
         },{
             name: 'Not Delivered',
-           // y: calculator.featuresCurrentOrOnLastDayOfRelease.length - (calculator.completedFeatures),
-            y: calculator.featuresOnDay0.length - (calculator.featuresCompleted.length),
+            y: Math.max(calculator.featuresOnDay0.length - (calculator.featuresCompleted.length),0),
             color: Rally.technicalservices.Color.featureTotalColor
         }];
 
@@ -81,15 +80,22 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         }];
     },
     _getTitle: function(){
-        var completed_features = this.featureSummaryCalculator.featuresCompleted.length,
-            pct_features_delivered = Number(completed_features/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1),
-            pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1);
 
-        return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
-            '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
-            '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
-            '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
-            pct_features_delivered, pct_incompleted_dod);
+
+        if (this.featureSummaryCalculator.featuresOnDay0.length > 0) {
+            var completed_features = this.featureSummaryCalculator.featuresCompleted.length,
+                pct_features_delivered = Number(completed_features / this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1),
+                pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD / this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1);
+
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
+                '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
+                pct_features_delivered, pct_incompleted_dod);
+        } else {
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>N/A</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">No<br/>Planned<br/>Features</span><br/></div>');
+        }
     },
     //Overriding this function because we want to set colors ourselves.
     _setChartColorsOnSeries: function (series) {

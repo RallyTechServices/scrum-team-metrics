@@ -3,11 +3,11 @@
 <head>
     <title>Scrum Team Metrics</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 24 2015 11:58:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 24 2015 14:46:16 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 24 2015 11:58:59 GMT-0700 (PDT)";
-        var CHECKSUM = 69213433880;
+        var APP_BUILD_DATE = "Mon Aug 24 2015 14:46:16 GMT-0700 (PDT)";
+        var CHECKSUM = 75719431332;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -696,7 +696,7 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
             this._fetchFeaturesComplete(),
             this._fetchFeatureColors(),
             this.getDoneItemsWithIncompleteDoD(),
-            this._fetchFeaturesPushed(),
+           // this._fetchFeaturesPushed(),
             this._fetchStoryAcceptedCounts()
         ];
 
@@ -711,8 +711,8 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
                 this.featureColorData = results[3];
 
                 this.doneFeaturesWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[4]);
-                this.featuresPushedCount = this._getFeaturesPushedCount(results[5]);
-                this.storiesAcceptedCounts = results[6];
+               // this.featuresPushedCount = this._getFeaturesPushedCount(results[5]);
+                this.storiesAcceptedCounts = results[5];
 
                 this._setDeployableFeatures(results[0],results[1]);
 
@@ -781,17 +781,17 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName, filters, fetch);
 //        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
     },
-    _fetchFeaturesPushed: function(){
-        var release_oids = _.map(this.releases, function(rel){return rel.get('ObjectID')});
-        var find = {
-            _TypeHierarchy: this.featureModelName,
-            _ProjectHierarchy: this.context.getProject().ObjectID,
-            Release: {$in: release_oids},
-            "_PreviousValues.c_FeatureTargetSprint": {$exists: true}
-        };
-        var fetch = ['c_FeatureTargetSprint','_PreviousValues.c_FeatureTargetSprint','ObjectID','_ValidFrom'];
-        return Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(find, fetch);
-    },
+    //_fetchFeaturesPushed: function(){
+    //    var release_oids = _.map(this.releases, function(rel){return rel.get('ObjectID')});
+    //    var find = {
+    //        _TypeHierarchy: this.featureModelName,
+    //        _ProjectHierarchy: this.context.getProject().ObjectID,
+    //        Release: {$in: release_oids},
+    //        "_PreviousValues.c_FeatureTargetSprint": {$exists: true}
+    //    };
+    //    var fetch = ['c_FeatureTargetSprint','_PreviousValues.c_FeatureTargetSprint','ObjectID','_ValidFrom'];
+    //    return Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(find, fetch);
+    //},
     getDoneItemsWithIncompleteDoD: function(){
         var filters = this.timeboxScope.getQueryFilter();
 
@@ -823,27 +823,27 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         });
         return features.length;
     },
-    _getFeaturesPushedCount: function(records){
-        var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(records),
-            pushed_features = [],
-            sprints = {};
-
-        _.each(snaps_by_oid, function(snaps, oid){
-            _.each(snaps, function(snap){
-                 var prev_sprint = snap["_PreviousValues.c_FeatureTargetSprint"] ||  null;
-                if (prev_sprint){
-                    pushed_features = Ext.Array.merge(pushed_features, [oid]);
-                    if (sprints[prev_sprint] == undefined){
-                        sprints[prev_sprint] = 0;
-                    }
-                    sprints[prev_sprint]++;
-                }
-            });
-        });
-
-        this.featurePushedSprintHash = sprints;
-        return pushed_features.length;
-    },
+    //_getFeaturesPushedCount: function(records){
+    //    var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(records),
+    //        pushed_features = [],
+    //        sprints = {};
+    //
+    //    _.each(snaps_by_oid, function(snaps, oid){
+    //        _.each(snaps, function(snap){
+    //             var prev_sprint = snap["_PreviousValues.c_FeatureTargetSprint"] ||  null;
+    //            if (prev_sprint){
+    //                pushed_features = Ext.Array.merge(pushed_features, [oid]);
+    //                if (sprints[prev_sprint] == undefined){
+    //                    sprints[prev_sprint] = 0;
+    //                }
+    //                sprints[prev_sprint]++;
+    //            }
+    //        });
+    //    });
+    //
+    //    this.featurePushedSprintHash = sprints;
+    //    return pushed_features.length;
+    //},
     _fetchStoryAcceptedCounts: function(){
         var deferred = Ext.create('Deft.Deferred');
         var filters = this.timeboxScope.getQueryFilter();
@@ -1056,8 +1056,7 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
             color: Rally.technicalservices.Color.featureCompleteIncompleteDodColor
         },{
             name: 'Not Delivered',
-           // y: calculator.featuresCurrentOrOnLastDayOfRelease.length - (calculator.completedFeatures),
-            y: calculator.featuresOnDay0.length - (calculator.featuresCompleted.length),
+            y: Math.max(calculator.featuresOnDay0.length - (calculator.featuresCompleted.length),0),
             color: Rally.technicalservices.Color.featureTotalColor
         }];
 
@@ -1069,15 +1068,22 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
         }];
     },
     _getTitle: function(){
-        var completed_features = this.featureSummaryCalculator.featuresCompleted.length,
-            pct_features_delivered = Number(completed_features/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1),
-            pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD/this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1);
 
-        return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
-            '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
-            '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
-            '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
-            pct_features_delivered, pct_incompleted_dod);
+
+        if (this.featureSummaryCalculator.featuresOnDay0.length > 0) {
+            var completed_features = this.featureSummaryCalculator.featuresCompleted.length,
+                pct_features_delivered = Number(completed_features / this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1),
+                pct_incompleted_dod = Number(this.featureSummaryCalculator.doneFeaturesWithIncompleteDoD / this.featureSummaryCalculator.featuresOnDay0.length * 100).toFixed(1);
+
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
+                '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
+                pct_features_delivered, pct_incompleted_dod);
+        } else {
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>N/A</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">No<br/>Planned<br/>Features</span><br/></div>');
+        }
     },
     //Overriding this function because we want to set colors ourselves.
     _setChartColorsOnSeries: function (series) {
@@ -1090,8 +1096,15 @@ Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
 Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
     extend: 'Rally.ui.chart.Chart',
     alias: 'widget.tsfeaturespushed',
-
+/*
+Todo:  make this a panel and then create the chart.
+ */
     config: {
+
+        records: undefined,
+        releases: undefined,
+        context: undefined,
+        featureModelName: undefined,
 
         loadMask: false,
 
@@ -1146,12 +1159,33 @@ Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
     },
     constructor: function(config) {
         this.mergeConfig(config);
+        this.callParent(arguments);
+        console.log('--', this.records);
+        if (this.records == undefined){
+            this.setLoading('Loading historical data...');
+            this._fetchFeaturesPushed().then({
+                scope: this,
+                success: function(records){
+                    console.log('_fetchFeaturesPushed success',records )
+                    this.initData(records);
+                    this.setLoading(false);
+                },
+                failure: function(msg){
+                    Rally.ui.notify.Notifier.showError({message: msg});
+                    this.setLoading(false);
+                }
+            });
+        } else {
+            this.initData(this.records);
+        }
+    },
+    initData: function(records){
 
-        this.chartData.series = this._getSeries(config.featureSummaryCalculator);
+        var pushed_hash = this._buildFeaturesPushedHash(records);
+
+        this.chartData.series = this._getSeries(pushed_hash);
         this.chartConfig.title.text = this._getTitle();
-        this.chartData.categories = this._getCategories(config.featureSummaryCalculator);
-        this.callParent([this.config]);
-
+        this.chartData.categories = this._getCategories(pushed_hash);
     },
     initComponent: function() {
         this.callParent(arguments);
@@ -1159,12 +1193,41 @@ Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
     _getTitle: function(){
         return Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>{0}</b></span></div>', this.title);
     },
+    _fetchFeaturesPushed: function(){
+        var release_oids = _.map(this.releases, function(rel){return rel.get('ObjectID')});
+        var find = {
+            _TypeHierarchy: this.featureModelName,
+            _ProjectHierarchy: this.context.getProject().ObjectID,
+            Release: {$in: release_oids},
+            "_PreviousValues.c_FeatureTargetSprint": {$exists: true}
+        };
+        var fetch = ['c_FeatureTargetSprint','_PreviousValues.c_FeatureTargetSprint','ObjectID','_ValidFrom'];
+        return Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(find, fetch);
+    },
+    _buildFeaturesPushedHash: function(records){
+        var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(records),
+            pushed_features = [],
+            sprints = {};
 
-    _getSeries: function(calculator){
-       var sprint_hash = calculator.featurePushedSprintHash,
-            data = [];
+        _.each(snaps_by_oid, function(snaps, oid){
+            _.each(snaps, function(snap){
+                var prev_sprint = snap["_PreviousValues.c_FeatureTargetSprint"] ||  null;
+                if (prev_sprint){
+                    pushed_features = Ext.Array.merge(pushed_features, [oid]);
+                    if (sprints[prev_sprint] == undefined){
+                        sprints[prev_sprint] = 0;
+                    }
+                    sprints[prev_sprint]++;
+                }
+            });
+        });
 
-        _.each(calculator.featurePushedSprintHash, function(count, sprint){
+        return sprints;
+    },
+    _getSeries: function(pushed_hash){
+       var data = [];
+
+        _.each(pushed_hash, function(count, sprint){
             data.push(count);
         });
 
@@ -1175,8 +1238,8 @@ Ext.define('Rally.technicalservices.chart.FeaturesPushed', {
         }];
         return series;
     },
-    _getCategories: function(calculator){
-        return _.keys(calculator.featurePushedSprintHash);
+    _getCategories: function(pushed_hash){
+        return _.keys(pushed_hash);
     },
     //Overriding this function because we want to set colors ourselves.
     _setChartColorsOnSeries: function (series) {
@@ -1644,13 +1707,15 @@ Ext.define("scrum-team-metrics", {
         burnup_chart.setWidth(top_chart_width * .45);
         burnup_chart.setHeight(250);
 
-        var pushed_chart = second_row_ct.add({
-            xtype: 'tsfeaturespushed',
-            featureSummaryCalculator: calculator,
-            title: "Features pushed from Feature Target Sprints"
-        });
-        pushed_chart.setWidth(top_chart_width * .45);
-        pushed_chart.setHeight(250);
+        //var pushed_chart = second_row_ct.add({
+        //    xtype: 'tsfeaturespushed',
+        //    releases: this.releases,
+        //    context: this.getContext(),
+        //    featureModelName: this.featureModelName,
+        //    title: "Features pushed from Feature Target Sprints"
+        //});
+        //pushed_chart.setWidth(top_chart_width * .45);
+        //pushed_chart.setHeight(250);
 
     },
     getOptions: function() {

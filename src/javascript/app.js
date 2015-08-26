@@ -167,13 +167,15 @@ Ext.define("scrum-team-metrics", {
         burnup_chart.setWidth(top_chart_width * .45);
         burnup_chart.setHeight(250);
 
-        var pushed_chart = second_row_ct.add({
-            xtype: 'tsfeaturespushed',
-            featureSummaryCalculator: calculator,
-            title: "Features pushed from Feature Target Sprints"
-        });
-        pushed_chart.setWidth(top_chart_width * .45);
-        pushed_chart.setHeight(250);
+        //var pushed_chart = second_row_ct.add({
+        //    xtype: 'tsfeaturespushed',
+        //    releases: this.releases,
+        //    context: this.getContext(),
+        //    featureModelName: this.featureModelName,
+        //    title: "Features pushed from Feature Target Sprints"
+        //});
+        //pushed_chart.setWidth(top_chart_width * .45);
+        //pushed_chart.setHeight(250);
 
     },
     getOptions: function() {

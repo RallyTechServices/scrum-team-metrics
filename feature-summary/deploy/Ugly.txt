@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Scrum Team Metrics</title>
+    <title>Feature Summary</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 24 2015 14:46:16 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Aug 25 2015 17:14:57 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 24 2015 14:46:16 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Tue Aug 25 2015 17:14:57 GMT-0700 (PDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -16,8 +16,8 @@
         Rally.onReady(function() {
             
             
-               Rally.launchApp('scrum-team-metrics', {
-                   name: 'Scrum Team Metrics'
+               Rally.launchApp('feature-summary', {
+                   name: 'Feature Summary'
                });
         });
     </script>
@@ -40,14 +40,6 @@
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
-}
-
-.x-progress-bar-default {
-    background-color: #8bbc21!important;
-    background-image: none!important;
-    border-width:0px!important;
-    vertical-align: middle!important;
-
 }
     </style>
 
