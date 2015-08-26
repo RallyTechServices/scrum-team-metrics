@@ -19,13 +19,8 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 type: 'bar'
             },
             title: {
-                text: '',
-                align: 'center',
-                useHTML: true
+                text: null
             },
-            //tooltip: {
-            //    pointFormat: '<b>{point.y}</b>'
-            //},
             xAxis: {
                 type: 'category',
                 labels: {
@@ -38,7 +33,11 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 }
             },
             legend: {
-                enabled: false
+                //layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'bottom',
+                floating: true,
+                y: 10
             },
             tooltip: {
                 formatter: function () {
@@ -62,16 +61,11 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
         this.mergeConfig(config);
 
         this.chartData.series = this._getSeries(config.featureSummaryCalculator);
-        this.chartConfig.title.text = this._getTitle();
         this.callParent([this.config]);
 
     },
     initComponent: function() {
         this.callParent(arguments);
-        this.setWidth(300);
-    },
-    _getTitle: function(){
-        return Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>{0}</b></span></div>', this.title);
     },
 
     _getSeries: function(calculator){
@@ -103,7 +97,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
 
         var series =  [{
                 name: 'Deployable',
-                data: deployable_data
+                data: deployable_data,
             }, {
                 name: 'Non-Deployable',
                 data: non_deployable_data
