@@ -33,7 +33,11 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 }
             },
             legend: {
-                enabled: false
+                //layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'bottom',
+                floating: true,
+                y: 10
             },
             tooltip: {
                 formatter: function () {

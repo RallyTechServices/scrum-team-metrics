@@ -45,7 +45,8 @@ Ext.define("feature-summary", {
 
                         this.down('#display_box').add({
                             xtype: 'rallybutton',
-                            text: 'teams',
+                            text: 'Team Drilldown',
+                            cls: 'secondary rly-small',
                             listeners: {
                                 scope: this,
                                 click: this._updateView
@@ -63,11 +64,11 @@ Ext.define("feature-summary", {
 
     },
     _updateView: function(btn){
-        if (btn.text == 'teams'){
-            btn.setText("summary");
+        if (btn.text == 'Team Drilldown'){
+            btn.setText("< Back to Summary");
             this._showTeamView(this.calculator);
         } else {
-            btn.setText("teams");
+            btn.setText("Team Drilldown");
             this._showSummaryView(this.calculator);
         }
     },
@@ -82,10 +83,11 @@ Ext.define("feature-summary", {
         }
         var summary = this.down('#display_box').add({
             xtype: 'tsfeaturesummarybyteam',
+            padding: 15,
             featureSummaryCalculator: calculator
         });
         summary.setWidth(chart_width *.95);
-        summary.setHeight(600);
+        summary.setHeight(300);
     },
     _showSummaryView: function(calculator){
         var chart_width = this.getWidth();
@@ -98,10 +100,11 @@ Ext.define("feature-summary", {
         }
         var summary = this.down('#display_box').add({
             xtype: 'tsfeaturesummary',
+            padding: 15,
             featureSummaryCalculator: calculator
         });
         summary.setWidth(chart_width *.95);
-        summary.setHeight(250);
+        summary.setHeight(300);
     },
     getOptions: function() {
         return [

@@ -3,11 +3,11 @@
 <head>
     <title>Feature Summary</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 25 2015 17:14:56 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Aug 26 2015 10:21:01 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 25 2015 17:14:56 GMT-0700 (PDT)";
-        var CHECKSUM = 26247943134;
+        var APP_BUILD_DATE = "Wed Aug 26 2015 10:21:01 GMT-0700 (PDT)";
+        var CHECKSUM = 27067139051;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -495,10 +495,14 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             xAxis: {
                 type: 'category',
                 labels: {
-                    rotation: -45,
+                    rotation: -60,
                     style: {
                         fontSize: '11px',
                         fontFamily: 'Verdana, sans-serif'
+                    },
+                    useHTML: true,
+                    formatter: function(){
+                        return '<span title="' + this.value + '"> ' + Ext.util.Format.ellipsis(this.value, 15) + '</span>';
                     }
                 }
             },
@@ -513,12 +517,16 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
                     stacking: "normal"
                 }
             },
+            tooltip: {
+                formatter: function () {
+                    return this.x + '<br/>' + this.series.name + ': ' + this.y + '<br/>' +
+                        'Total: ' + this.point.stackTotal;
+                }
+            },
             legend: {
                 //layout: 'vertical',
-                align: 'left',
-                x: 120,
+                align: 'right',
                 verticalAlign: 'top',
-                y: 100,
                 floating: true
             }
         },
@@ -836,7 +844,11 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 }
             },
             legend: {
-                enabled: false
+                //layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'bottom',
+                floating: true,
+                y: 10
             },
             tooltip: {
                 formatter: function () {
@@ -957,7 +969,8 @@ Ext.define("feature-summary", {
 
                         this.down('#display_box').add({
                             xtype: 'rallybutton',
-                            text: 'teams',
+                            text: 'Team Drilldown',
+                            cls: 'secondary rly-small',
                             listeners: {
                                 scope: this,
                                 click: this._updateView
@@ -975,11 +988,11 @@ Ext.define("feature-summary", {
 
     },
     _updateView: function(btn){
-        if (btn.text == 'teams'){
-            btn.setText("summary");
+        if (btn.text == 'Team Drilldown'){
+            btn.setText("< Back to Summary");
             this._showTeamView(this.calculator);
         } else {
-            btn.setText("teams");
+            btn.setText("Team Drilldown");
             this._showSummaryView(this.calculator);
         }
     },
@@ -994,10 +1007,11 @@ Ext.define("feature-summary", {
         }
         var summary = this.down('#display_box').add({
             xtype: 'tsfeaturesummarybyteam',
+            padding: 15,
             featureSummaryCalculator: calculator
         });
         summary.setWidth(chart_width *.95);
-        summary.setHeight(600);
+        summary.setHeight(300);
     },
     _showSummaryView: function(calculator){
         var chart_width = this.getWidth();
@@ -1010,10 +1024,11 @@ Ext.define("feature-summary", {
         }
         var summary = this.down('#display_box').add({
             xtype: 'tsfeaturesummary',
+            padding: 15,
             featureSummaryCalculator: calculator
         });
         summary.setWidth(chart_width *.95);
-        summary.setHeight(250);
+        summary.setHeight(300);
     },
     getOptions: function() {
         return [

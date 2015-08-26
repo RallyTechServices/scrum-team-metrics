@@ -23,10 +23,14 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             xAxis: {
                 type: 'category',
                 labels: {
-                    rotation: -45,
+                    rotation: -60,
                     style: {
                         fontSize: '11px',
                         fontFamily: 'Verdana, sans-serif'
+                    },
+                    useHTML: true,
+                    formatter: function(){
+                        return '<span title="' + this.value + '"> ' + Ext.util.Format.ellipsis(this.value, 15) + '</span>';
                     }
                 }
             },
@@ -41,12 +45,16 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
                     stacking: "normal"
                 }
             },
+            tooltip: {
+                formatter: function () {
+                    return this.x + '<br/>' + this.series.name + ': ' + this.y + '<br/>' +
+                        'Total: ' + this.point.stackTotal;
+                }
+            },
             legend: {
                 //layout: 'vertical',
-                align: 'left',
-                x: 120,
+                align: 'right',
                 verticalAlign: 'top',
-                y: 100,
                 floating: true
             }
         },
