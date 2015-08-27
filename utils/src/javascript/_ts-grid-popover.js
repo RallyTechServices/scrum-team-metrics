@@ -124,7 +124,9 @@ Ext.define('Rally.technicalservices.DataPopover', {
             xtype: 'rallygrid',
             columnCfgs: config.fetch,
             store: store,
-            showPagingToolbar: config.oids.length > 200
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
         }];
 
         config.items = Ext.merge(items, config.items);

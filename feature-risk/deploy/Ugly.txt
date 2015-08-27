@@ -3,10 +3,10 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:16:57 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 14:18:45 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:16:57 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Thu Aug 27 2015 14:18:45 GMT-0700 (PDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
