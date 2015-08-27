@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Summary</title>
+    <title>Feature Burnup</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 13:48:37 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 13:48:53 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:37 GMT-0700 (PDT)";
-        var CHECKSUM = 38301332665;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:53 GMT-0700 (PDT)";
+        var CHECKSUM = 21469489632;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -605,505 +605,273 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
     },
 });
 
-Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
+Ext.define('Rally.technicalservices.calculator.FeatureBurnup',{
+    extend: 'Rally.data.lookback.calculator.TimeSeriesCalculator',
+    config: {
+        releaseOids: undefined,
+        completedStates: undefined,
+        timeboxScope: undefined
+    },
+    constructor: function(config) {
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+    runCalculation: function (snapshots) {
+        console.log('runcalculator')
+        this._calculateCycleTimes(snapshots);
+
+        var calculatorConfig = this._prepareCalculatorConfig(),
+            seriesConfig = this._buildSeriesConfig(calculatorConfig);
+
+        var calculator = this.prepareCalculator(calculatorConfig);
+        calculator.addSnapshots(snapshots, this._getStartDate(snapshots), this._getEndDate(snapshots));
+
+        return this._transformLumenizeDataToHighchartsSeries(calculator, seriesConfig);
+    },
+    getMetrics: function () {
+        var completedStates = this.completedStates;
+
+        return [
+            {
+                "field": "ReleaseFeature",
+                "as": "Total Features",
+                "display": "line",
+                "f": "sum"
+            },
+            {
+                "field": "ReleaseFeature",
+                "as": "Delivered Features",
+                "f": "filteredSum",
+                "filterField": "State",
+                "filterValues": completedStates,
+                "display": "area"
+            }];
+    },
+    getDerivedFieldsOnInput: function(){
+        var releases = this.releaseOids;
+
+        return [{
+            "as": "ReleaseFeature",
+            "f": function(snapshot){
+                if (snapshot.Release && Ext.Array.contains(releases, snapshot.Release)) {
+                    return 1;
+                }
+                return 0;
+            }
+        }];
+    },
+    _calculateCycleTimes: function(snapshots){
+        /**
+         * _getFeatureCycleTime is calculated as the average cycle time from either
+         * (1) the first day of the release if the feature was planned
+         * (2) the day the feature was added to the release if the feature was added
+         *
+         * to the day the feature was set to the completed state.
+         *
+         * @param addedFeatureSnapshots
+         * @param featuresDoneSnapshots
+         * @returns {number}
+         * @private
+         */
+
+        var release_start_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseStartDate')),
+            completed_values = this.completedStates;
+
+            var cycle_times = [],
+                snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOid(snapshots),
+                durations = [];
+
+            _.each(snaps_by_oid, function(snaps, oid){
+                var start_date = Rally.util.DateTime.fromIsoString(snaps[0]._ValidFrom),
+                    end_date = null,
+                    prev_snap = null;
+
+                for (var i =0; i < snaps.length; i++){
+                    var snap = snaps[i];
+                    if (Ext.Array.contains(completed_values, snap.State) &&
+                        (prev_snap == null || !Ext.Array.contains(completed_values, prev_snap.State))){
+                        end_date = Rally.util.DateTime.fromIsoString(snap._ValidFrom);
+                    }
+                    prev_snap = snap;
+                }
+
+                if (Date.parse(start_date) < Date.parse(release_start_date)){
+                    start_date = release_start_date;
+                }
+
+                if (end_date && start_date){
+                    cycle_times.push({objectId: oid, startDate: start_date, endDate: end_date});
+                    durations.push(Rally.util.DateTime.getDifference(new Date(end_date), new Date(start_date), 'day'));
+                }
+            });
+
+            this.avgCycleTime = Ext.Array.mean(durations);
+
+    }
+});
+
+Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
     extend: 'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeaturesummarybyteam',
+    alias: 'widget.tsfeatureburnup',
 
     config: {
 
+        /**
+         * Input configurations
+         */
+        timeboxScope:  undefined,
+        releases: undefined,
+        context: undefined,
+        featureModelName: undefined,
+        completedStates: undefined,
+
         loadMask: false,
+        /**
+         * Chart configurations
+         */
+
+        calculatorType: 'Rally.technicalservices.calculator.FeatureBurnup',
+        calculatorConfig: undefined,
+        storeType: 'Rally.data.lookback.SnapshotStore',
+
+        storeConfig: {
+            fetch: [
+                'ObjectID',
+                'Release',
+                '_PreviousValues.Release',
+                '_ValidFrom',
+                'State',
+                '_PreviousValues.State'
+            ],
+            sort: {
+                '_ValidFrom': 1
+            },
+            limit: Infinity,
+            compress: true,
+            removeUnauthorizedSnapshots: true,
+            hydrate: ['State','_PreviousValues.State']
+        },
 
         chartConfig: {
-            colors: [
-                Rally.technicalservices.Color.featurePlanned,
-                Rally.technicalservices.Color.featureAdded,
-                Rally.technicalservices.Color.featureDescoped,
-                Rally.technicalservices.Color.featureNonDeployedColor
-            ],
+            colors: ['#2f7ed8','#8bbc21'],
 
             chart: {
+                defaultSeriesType: 'area',
                 zoomType: 'xy'
             },
             title: {
-                text: null
+                text: ''
             },
             xAxis: {
-                type: 'category',
+                categories: [],
+                tickmarkPlacement: 'on',
+                tickInterval: 5,
                 labels: {
-                    //rotation: -60,
-                    style: {
-                        fontSize: '11px',
-                        fontFamily: 'Verdana, sans-serif'
-                    },
-                    useHTML: true,
+                    rotation: -45,
                     formatter: function(){
-                        return '<span title="' + this.value + '"> ' + Ext.util.Format.ellipsis(this.value, 15) + '</span>';
+                        return Rally.util.DateTime.format(Rally.util.DateTime.fromIsoString(this.value), 'M-d');
                     }
                 }
             },
-            yAxis: {
-                title: {
-                    text: 'Feature Count'
-                }
-            },
-            plotOptions: {
-                series: {
-                    borderWidth: 0,
-                    stacking: "normal"
-                }
-            },
-            tooltip: {
-                formatter: function () {
-                    var total = 0,
-                        x = this.point.x,
-                        descoped = 0,
-                        y = this.y;
-
-                    _.each(this.series.chart.series, function(s){
-                         if (s.name == "Descoped"){
-                            descoped = s.yData[x];
-                        } else {
-                            total += s.yData[x];
-                        }
-                    });
-
-                    if (this.series.name == "Descoped"){
-                        y = -descoped;
+            yAxis: [
+                {
+                    title: {
+                        text: 'Feature Count'
                     }
-
-                    if (this.series.name == "Planned"){
-                        y = y - descoped;
-                    }
-
-                    return this.x + '<br/>' + this.series.name + ': ' + y + '<br/>' +
-                        'Total: ' + total;
                 }
-            },
-            legend: {
-                layout: 'vertical',
-                align: 'right',
-                verticalAlign: 'bottom',
-                floating: true,
-                y: -30
-            }
-        },
-        chartData: {
-            series: []
-        }
-
-    },
-    constructor: function(config) {
-        this.mergeConfig(config);
-
-        this.chartData.series = this._getSeries(config.featureSummaryCalculator);
-        this.callParent([this.config]);
-
-    },
-    _getSeries: function(calculator){
-
-        var categories = this._getCategories(calculator);
-
-        var start_records = calculator.startRecords,
-            end_records = calculator.endRecords,
-            added_oids = calculator.featuresAdded,
-            descoped_oids = calculator.featuresDescoped,
-            planned_oids = calculator.featuresOnDay0,
-            completed_states = calculator.completedStates,
-            proj_hash = {};
-        console.log('---',descoped_oids, planned_oids,completed_states);
-
-        _.each(start_records, function(r){
-            var proj = r.get('Project').Name,
-                oid = r.get('ObjectID');
-
-            if (!proj_hash[proj]){
-                proj_hash[proj] = {planned: 0, added: 0, descoped: 0, done: 0}
-            }
-            if (Ext.Array.contains(planned_oids, oid)){
-                proj_hash[proj].planned++;
-            }
-            if (Ext.Array.contains(descoped_oids, oid)){
-                proj_hash[proj].descoped++;
-            }
-        });
-
-        _.each(end_records, function(r){
-            var proj = r.get('Project').Name,
-                oid = r.get('ObjectID');
-
-            if (!proj_hash[proj]){
-                proj_hash[proj] = {planned: 0, added: 0, descoped: 0, done: 0}
-            }
-            if (Ext.Array.contains(added_oids,oid)){
-                proj_hash[proj].added++;
-            }
-            if (Ext.Array.contains(completed_states, r.get('State'))){
-                proj_hash[proj].done++;
-            }
-        });
-
-        console.log('---',proj_hash);
-
-        this.chartData.categories = categories;
-
-        var planned_data = [],
-            descoped_data = [],
-            added_data = [],
-            done_data = [];
-
-        _.each(categories, function(proj){
-            var proj_obj = proj_hash[proj] || {},
-                descoped = proj_hash[proj].descoped || 0;
-
-            planned_data.push(proj_obj.planned || 0 - descoped);
-            descoped_data.push(-descoped);
-            added_data.push(proj_obj.added || 0);
-            done_data.push(proj_obj.done || 0);
-        });
-
-        console.log('---',categories, planned_data, descoped_data,added_data, done_data);
-        var series =  [{
-            name: 'Added',
-            type: 'bar',
-            data: added_data,
-           // stack: 'total'
-        },{
-            name: 'Planned',
-            type: 'bar',
-            data: planned_data,
-            //  stack: 'total'
-        },{
-            name: 'Descoped',
-            type: 'bar',
-            data: descoped_data
-        //},{
-        //    name: 'Done',
-        //    type: 'spline',
-        //    data: done_data
-        }];
-
-        return series;
-    },
-    _getCategories: function(calculator){
-        var categories = Ext.Array.merge(this._getTeamArray(calculator.startRecords), this._getTeamArray(calculator.endRecords));
-        return Ext.Array.sort(categories);
-    },
-    _getTeamArray: function(records){
-        var teams = [];
-        _.each(records, function(r){
-            var team = r.get('Project').Name;
-            if (!Ext.Array.contains(teams,team)){
-                teams.push(team);
-            }
-        });
-        return teams;
-    },
-    _setChartColorsOnSeries: function () {
-        return null;
-    }
-});
-
-
-
-Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
-    config: {
-        completedStates: ["Operate","Done"],
-        plannedDate: undefined,
-        timeboxScope: undefined,
-        featureModelName: "PortfolioItem/Feature",
-        releases: undefined
-    },
-    notCalculated: 0,
-
-    /**
-     * Features associated with the current Release that are currently in the completedState
-     */
-    featuresCompleted: undefined,
-    totalFeatures: undefined,
-    plannedFeatures: undefined,
-    newFeaturesInRelease: undefined,
-    descopedFeatures: undefined,
-    doneFeaturesWithIncompleteDod: undefined,
-
-    constructor: function (config) {
-        this.mergeConfig(config);
-        this.callParent([this.config]);
-    },
-    _getStartFind: function(release_oids){
-        var release_start_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseStartDate'));
-
-        return {
-            _TypeHierarchy: this.featureModelName,
-            _ProjectHierarchy: this.context.getProject().ObjectID,
-            __At: release_start_date,
-            Release: {$in: release_oids}
-        };
-    },
-    _getEndFind: function(release_oids){
-        var release_end_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseDate'));
-        if (release_end_date > new Date()){
-            release_end_date = "current";
-        }
-        return {
-            _TypeHierarchy: this.featureModelName,
-            _ProjectHierarchy: this.context.getProject().ObjectID,
-            __At: release_end_date,
-            Release: {$in: release_oids}
-        };
-    },
-    calculate: function(){
-        var deferred = Ext.create('Deft.Deferred'),
-            release_oids = _.map(this.releases, function(r){return r.get('ObjectID')}),
-            fetch = ['ObjectID','c_FeatureDeploymentType','State','Project'];
-
-        var promises = [
-            Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(this._getStartFind(release_oids), fetch,['Project']),
-            Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(this._getEndFind(release_oids), fetch,['State','Project']),
-            this.getDoneItemsWithIncompleteDoD()
-        ];
-
-        Deft.Promise.all(promises).then({
-            scope: this,
-            success: function(results){
-                this.startRecords = results[0];
-                this.endRecords = results[1];
-
-                this.featuresOnDay0 = _.map(results[0], function(r){ return r.get('ObjectID')}),
-                this.featuresCurrentOrOnLastDayOfRelease = _.map(results[1], function(r){return r.get('ObjectID')}),
-                this.featuresDescoped = Ext.Array.difference(this.featuresOnDay0, this.featuresCurrentOrOnLastDayOfRelease),
-                this.featuresAdded = Ext.Array.difference(this.featuresCurrentOrOnLastDayOfRelease, this.featuresOnDay0);
-                this.featuresCompleted = this._getCompletedFeatureOids(results[1]);
-                this.doneFeaturesWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[2]);
-                this._setDeployableFeatures(results[0],results[1]);
-                deferred.resolve();
-            },
-            failure: function(msg){
-                deferred.reject(msg);
-            }
-        });
-        return deferred;
-    },
-    _getCompletedFeatureOids: function(records){
-        var completed_records = [],
-            completed_states = this.completedStates;
-
-        _.each(records, function(r){
-            var state = r.get('State') || null;
-            if (Ext.Array.contains(completed_states, state)){
-                completed_records.push(r.get('ObjectID'));
-            }
-        }, this);
-        return completed_records;
-    },
-    _setDeployableFeatures: function(day0Features, currentFeatures){
-        var non_deployable = [],
-            deployable = [];
-
-
-         _.each(currentFeatures, function(f){
-            var deployment_type = f.get('c_FeatureDeploymentType');
-            if (deployment_type && /^N\/A/.test(deployment_type)){
-                non_deployable.push(f.get('ObjectID'));
-            } else {
-                deployable.push(f.get('ObjectID'));
-            }
-        });
-
-        _.each(day0Features, function(f){
-            var deployment_type = f.get('c_FeatureDeploymentType'),
-                oid = f.get('ObjectID');
-            if (!Ext.Array.contains(deployable, oid) &&
-                    !Ext.Array.contains(non_deployable, oid)){
-
-                if (/^N\/A/.test(deployment_type)){
-                    non_deployable.push(oid);
-                } else {
-                    deployable.push(oid);
-                }
-            }
-        });
-
-        this.deployableFeatures = deployable;
-        this.nonDeployableFeatures = non_deployable;
-
-    },
-    getDoneItemsWithIncompleteDoD: function(){
-        var filters = this.timeboxScope.getQueryFilter();
-
-        filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
-            property: 'c_DoDStoryType',
-            operator: '!=',
-            value: ''
-        }));
-
-        filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
-            property: 'ScheduleState',
-            operator: '!=',
-            value: "Accepted"
-        }));
-
-        var state_filters = [];
-        _.each(this.completedStates, function(state){
-            state_filters.push({
-                property: 'Feature.State.Name',
-                value: state
-            });
-        });
-        filters = filters.and(Rally.data.wsapi.Filter.or(state_filters));
-
-        //TODO - process the data to return the number of features
-        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords('HierarchicalRequirement',filters,['Feature','ObjectID']);
-    },
-    _getFeatureWithIncompleteDoDCount: function(records){
-        var features = [];
-        _.each(records, function(r){
-            if (r.get('Feature')){
-                features = Ext.Array.merge(features, [r.get('Feature').ObjectID]);
-            }
-        });
-        return features.length;
-    }
-});
-
-
-Ext.define('Rally.technicalservices.chart.FeatureSummary', {
-    extend: 'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeaturesummary',
-
-    config: {
-
-        loadMask: false,
-
-        chartConfig: {
-            colors: [
-                Rally.technicalservices.Color.featureDeployedColor,
-                Rally.technicalservices.Color.featureNonDeployedColor
             ],
-
-            chart: {
-                plotBackgroundColor: null,
-                plotBorderWidth: 0,
-                plotShadow: false,
-                type: 'bar'
-            },
-            title: {
-                text: null
-            },
-            xAxis: {
-                type: 'category',
-                labels: {
-                    enabled: true
-                }
-            },
-            yAxis: {
-                title: {
-                    text: 'Feature Count'
-                }
-            },
             legend: {
-                layout: 'vertical',
-                align: 'right',
+                align: 'center',
                 verticalAlign: 'bottom',
-                floating: true,
-                y: -30
+                backgroundColor: 'white',
+                borderColor: '#CCC',
+                borderWidth: 1,
+                shadow: false
             },
             tooltip: {
-                formatter: function () {
-
-                    return this.series.name + ': ' + this.y + '<br/>' +
-                        'Total: ' + this.point.stackTotal;
+                formatter: function() {
+                    return '' + this.x + '<br />' + this.series.name + ': ' + this.y;
                 }
             },
             plotOptions: {
                 series: {
-                    point: {
-                        events: {
-                            click: function(){
-                                console.log('select',this);
-                                var data = Ext.create('Rally.technicalservices.DataPopover',{
-                                    modelName: this.series.chart.userOptions.chart.modelName,
-                                    fetch: this.series.chart.userOptions.chart.fetch,
-                                    title: Ext.String.format("{0} {1} Features ({2} items)", this.category, this.series.name, this.oids.length || 0),
-                                    oids: this.oids
-                                });
-                                data.show();
+                    marker: {
+                        enabled: false,
+                        states: {
+                            hover: {
+                                enabled: true
                             }
                         }
                     },
-                    borderWidth: 0,
-                    stacking: "normal"
+                    groupPadding: 0.01
+                },
+                column: {
+                    stacking: null,
+                    shadow: false
                 }
             }
-        },
-        chartData: {
-            series: []
         }
 
     },
     constructor: function(config) {
         this.mergeConfig(config);
 
-        this.chartData.series = this._getSeries(config.featureSummaryCalculator);
+
+        var release_start_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseStartDate'), true),
+            release_end_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseDate'), true);
+
+        var release_oids = _.map(config.releases, function(rel){return rel.get('ObjectID')});
+
+        this.config.calculatorConfig = {
+            releaseOids: release_oids,
+            completedStates: config.completedStates,
+            startDate: release_start_date,
+            endDate: release_end_date,
+            projectOid: config.context.getProject().ObjectID,
+            timeboxScope: config.timeboxScope
+        };
+
+        var find = {
+            _TypeHierarchy: config.featureModelName,
+            _ProjectHierarchy: config.context.getProject().ObjectID,
+            _ValidTo:  {$gte: release_start_date},
+            _ValidFrom: {$lte: release_end_date},
+             Release: {$in: release_oids}
+        };
+        this.storeConfig.find = find;
         this.callParent([this.config]);
 
     },
+    _validateAggregation: function () {
+        if (!this._haveDataToRender()) {
+            return this._setErrorMessage(this.aggregationErrorMessage);
+        }
+        this._setSubtitle(this.calculator.avgCycleTime);
+        this._renderChart();
+    },
+    _setSubtitle: function(avgCycleTime){
+        this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+
+    },
+
     initComponent: function() {
         this.callParent(arguments);
     },
-
-    _getSeries: function(calculator){
-
-        var categories = ['Total','Planned','Added','Descoped','Delivered'],
-            deployable_data = [0,0,0,0,0],
-            non_deployable_data = [0,0,0,0,0],
-            model = calculator.featureModelName,
-            serverFilters = [];
-
-        if (calculator.deployableFeatures && calculator.deployableFeatures.length > 0){
-            deployable_data = [
-                {y: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresOnDay0 || [], calculator.deployableFeatures).length,oids: _.intersection(calculator.featuresOnDay0 || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresAdded || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresAdded || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresDescoped || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresDescoped || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresCompleted || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresCompleted || [], calculator.deployableFeatures)}
-            ];
-        }
-
-        if (calculator.nonDeployableFeatures && calculator.nonDeployableFeatures.length > 0){
-            non_deployable_data = [
-                {y: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresOnDay0 || [], calculator.nonDeployableFeatures).length, oids:_.intersection(calculator.featuresOnDay0 || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresAdded || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresAdded || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresDescoped || [], calculator.nonDeployableFeatures).length, oids:_.intersection(calculator.featuresDescoped || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresCompleted || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresCompleted || [], calculator.nonDeployableFeatures)}
-            ];
-        }
-        this.chartData.categories = categories;
-        this.chartConfig.chart.modelName = calculator.featureModelName;
-        this.chartConfig.chart.fetch = ["FormattedID","Name","Project","State"];
-
-        var series =  [{
-                name: 'Deployable',
-                data: deployable_data,
-            }, {
-                name: 'Non-Deployable',
-                data: non_deployable_data
-        }];
-
-        return series;
-    },
-
-    _setChartColorsOnSeries: function () {
+    //Overriding this function because we want to set colors ourselves.
+    _setChartColorsOnSeries: function (series) {
         return null;
     }
 });
 
 
-Ext.define("feature-summary", {
+
+Ext.define("feature-burnup", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
+
     autoScroll: false,
+
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
@@ -1112,101 +880,68 @@ Ext.define("feature-summary", {
     featureModelName: "PortfolioItem/Feature",
 
     onScopeChange: function(timeboxScope){
-
-        if (this.down('#display_box')){
-            this.down('#display_box').destroy();
-        }
-        this.add({
-            xtype: 'container',
-            itemId: 'display_box',
-            width: '100%',
-            layout:'vbox'
-        });
-
         this.setLoading(true);
-        Rally.technicalservices.WsapiToolbox.fetchReleases(timeboxScope).then({
+
+        this._fetchReleases(timeboxScope).then({
             scope: this,
             success: function(releases){
                 this.releases = releases;
-
-                var calculator = Ext.create('Rally.technicalservices.calculator.FeatureSummary',{
+                this.logger.log('_fetchReleases Success', releases);
+                this.setLoading(false);
+                var burnup_chart = this.add({
+                    xtype: 'tsfeatureburnup',
                     timeboxScope: this.getContext().getTimeboxScope(),
                     context: this.getContext(),
+                    completedStates: this.completedStates,
                     releases: releases,
-                    plannedDate: timeboxScope.getRecord().get('ReleaseStartDate'),
-                    featureModelName: this.featureModelName,
-                    completedStates: this.completedStates
+                    featureModelName: this.featureModelName
                 });
-                calculator.calculate().then({
-                    scope: this,
-                    success: function(){
-                        this.setLoading(false);
-                        this.calculator = calculator;
-
-
-                        this.down('#display_box').add({
-                            xtype: 'rallybutton',
-                            text: 'Team View',
-                            cls: 'secondary rly-small',
-                            listeners: {
-                                scope: this,
-                                click: this._updateView
-                            }
-                        });
-                        this._showSummaryView(calculator);
-
-                    }
-                });
+                //burnup_chart.setWidth(this.width *.95);
+                burnup_chart.setHeight(300);
             },
             failure: function(msg){
                 Rally.ui.notify.Notifier.showError({message: msg});
             }
         });
+    },
+    _fetchReleases: function(timebox){
+        this.logger.log('_fetchReleases Loading');
 
-    },
-    _updateView: function(btn){
-        if (btn.text == 'Team View'){
-            btn.setText("< Back to Summary");
-            this._showTeamView(this.calculator);
-        } else {
-            btn.setText("Team View");
-            this._showSummaryView(this.calculator);
+        var deferred = Ext.create('Deft.Deferred'),
+            rec = timebox.getRecord(),
+            me = this;
+
+        if (rec == null) {
+            deferred.resolve([]);
         }
-    },
-    _showTeamView: function(calculator){
-        var chart_width = this.getWidth();
-        this.logger.log('width', chart_width);
-        if (this.down('tsfeaturesummarybyteam')){
-            this.down('tsfeaturesummarybyteam').destroy();
-        }
-        if (this.down('tsfeaturesummary')){
-            this.down('tsfeaturesummary').destroy();
-        }
-        var summary = this.down('#display_box').add({
-            xtype: 'tsfeaturesummarybyteam',
-            padding: 15,
-            featureSummaryCalculator: calculator
+
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'Release',
+            fetch: ['ObjectID'],
+            filters: [{
+                property: 'Name',
+                value: rec.get('Name')
+            },{
+                property: 'ReleaseStartDate',
+                value: rec.get('ReleaseStartDate')
+            },{
+                property: 'ReleaseDate',
+                value: rec.get('ReleaseDate')
+            }],
+            limit: Infinity
+        }).load({
+            callback: function(records, operation, success){
+                me.logger.log('_fetchReleases',success,records.length,operation);
+                if (success){
+                    deferred.resolve(records);
+                }   else {
+                    deferred.reject("Error loading Releases: " + operation.error.errors.join(','));
+                }
+            }
         });
-        summary.setWidth(chart_width *.95);
-        summary.setHeight(300);
+        return deferred;
     },
-    _showSummaryView: function(calculator){
-        var chart_width = this.getWidth();
-        this.logger.log('width', chart_width);
-        if (this.down('tsfeaturesummary')){
-            this.down('tsfeaturesummary').destroy();
-        }
-        if (this.down('tsfeaturesummarybyteam')){
-            this.down('tsfeaturesummarybyteam').destroy();
-        }
-        var summary = this.down('#display_box').add({
-            xtype: 'tsfeaturesummary',
-            padding: 15,
-            featureSummaryCalculator: calculator
-        });
-        summary.setWidth(chart_width *.95);
-        summary.setHeight(300);
-    },
+    
     getOptions: function() {
         return [
             {
@@ -1235,8 +970,8 @@ Ext.define("feature-summary", {
 });
 
             
-               Rally.launchApp('feature-summary', {
-                   name: 'Feature Summary'
+               Rally.launchApp('feature-burnup', {
+                   name: 'Feature Burnup'
                });
         });
     </script>

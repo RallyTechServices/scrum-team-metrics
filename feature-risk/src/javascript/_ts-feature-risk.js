@@ -129,7 +129,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     _getSummaryChartConfig: function(){
         var x = this.width * .35,
             y = this.height * .25 + 25;
-            console.log('x,y', this.width, this.height, x, y);
+
         return  {
             colors: [
                 Rally.technicalservices.Color.classificationOnTrack,

@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Summary</title>
+    <title>Features Delivered</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 13:48:37 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 13:48:45 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:37 GMT-0700 (PDT)";
-        var CHECKSUM = 38301332665;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:45 GMT-0700 (PDT)";
+        var CHECKSUM = 17892138276;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -605,330 +605,160 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
     },
 });
 
-Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
-    extend: 'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeaturesummarybyteam',
+Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
+    extend: 'Ext.panel.Panel', //'Rally.ui.chart.Chart',
+    alias: 'widget.tsfeaturesdelivered',
+    border: 0,
 
-    config: {
-
-        loadMask: false,
-
-        chartConfig: {
-            colors: [
-                Rally.technicalservices.Color.featurePlanned,
-                Rally.technicalservices.Color.featureAdded,
-                Rally.technicalservices.Color.featureDescoped,
-                Rally.technicalservices.Color.featureNonDeployedColor
-            ],
-
-            chart: {
-                zoomType: 'xy'
-            },
-            title: {
-                text: null
-            },
-            xAxis: {
-                type: 'category',
-                labels: {
-                    //rotation: -60,
-                    style: {
-                        fontSize: '11px',
-                        fontFamily: 'Verdana, sans-serif'
-                    },
-                    useHTML: true,
-                    formatter: function(){
-                        return '<span title="' + this.value + '"> ' + Ext.util.Format.ellipsis(this.value, 15) + '</span>';
-                    }
-                }
-            },
-            yAxis: {
-                title: {
-                    text: 'Feature Count'
-                }
-            },
-            plotOptions: {
-                series: {
-                    borderWidth: 0,
-                    stacking: "normal"
-                }
-            },
-            tooltip: {
-                formatter: function () {
-                    var total = 0,
-                        x = this.point.x,
-                        descoped = 0,
-                        y = this.y;
-
-                    _.each(this.series.chart.series, function(s){
-                         if (s.name == "Descoped"){
-                            descoped = s.yData[x];
-                        } else {
-                            total += s.yData[x];
-                        }
-                    });
-
-                    if (this.series.name == "Descoped"){
-                        y = -descoped;
-                    }
-
-                    if (this.series.name == "Planned"){
-                        y = y - descoped;
-                    }
-
-                    return this.x + '<br/>' + this.series.name + ': ' + y + '<br/>' +
-                        'Total: ' + total;
-                }
-            },
-            legend: {
-                layout: 'vertical',
-                align: 'right',
-                verticalAlign: 'bottom',
-                floating: true,
-                y: -30
-            }
-        },
-        chartData: {
-            series: []
-        }
-
-    },
     constructor: function(config) {
         this.mergeConfig(config);
-
-        this.chartData.series = this._getSeries(config.featureSummaryCalculator);
-        this.callParent([this.config]);
-
-    },
-    _getSeries: function(calculator){
-
-        var categories = this._getCategories(calculator);
-
-        var start_records = calculator.startRecords,
-            end_records = calculator.endRecords,
-            added_oids = calculator.featuresAdded,
-            descoped_oids = calculator.featuresDescoped,
-            planned_oids = calculator.featuresOnDay0,
-            completed_states = calculator.completedStates,
-            proj_hash = {};
-        console.log('---',descoped_oids, planned_oids,completed_states);
-
-        _.each(start_records, function(r){
-            var proj = r.get('Project').Name,
-                oid = r.get('ObjectID');
-
-            if (!proj_hash[proj]){
-                proj_hash[proj] = {planned: 0, added: 0, descoped: 0, done: 0}
-            }
-            if (Ext.Array.contains(planned_oids, oid)){
-                proj_hash[proj].planned++;
-            }
-            if (Ext.Array.contains(descoped_oids, oid)){
-                proj_hash[proj].descoped++;
-            }
-        });
-
-        _.each(end_records, function(r){
-            var proj = r.get('Project').Name,
-                oid = r.get('ObjectID');
-
-            if (!proj_hash[proj]){
-                proj_hash[proj] = {planned: 0, added: 0, descoped: 0, done: 0}
-            }
-            if (Ext.Array.contains(added_oids,oid)){
-                proj_hash[proj].added++;
-            }
-            if (Ext.Array.contains(completed_states, r.get('State'))){
-                proj_hash[proj].done++;
-            }
-        });
-
-        console.log('---',proj_hash);
-
-        this.chartData.categories = categories;
-
-        var planned_data = [],
-            descoped_data = [],
-            added_data = [],
-            done_data = [];
-
-        _.each(categories, function(proj){
-            var proj_obj = proj_hash[proj] || {},
-                descoped = proj_hash[proj].descoped || 0;
-
-            planned_data.push(proj_obj.planned || 0 - descoped);
-            descoped_data.push(-descoped);
-            added_data.push(proj_obj.added || 0);
-            done_data.push(proj_obj.done || 0);
-        });
-
-        console.log('---',categories, planned_data, descoped_data,added_data, done_data);
-        var series =  [{
-            name: 'Added',
-            type: 'bar',
-            data: added_data,
-           // stack: 'total'
-        },{
-            name: 'Planned',
-            type: 'bar',
-            data: planned_data,
-            //  stack: 'total'
-        },{
-            name: 'Descoped',
-            type: 'bar',
-            data: descoped_data
-        //},{
-        //    name: 'Done',
-        //    type: 'spline',
-        //    data: done_data
-        }];
-
-        return series;
-    },
-    _getCategories: function(calculator){
-        var categories = Ext.Array.merge(this._getTeamArray(calculator.startRecords), this._getTeamArray(calculator.endRecords));
-        return Ext.Array.sort(categories);
-    },
-    _getTeamArray: function(records){
-        var teams = [];
-        _.each(records, function(r){
-            var team = r.get('Project').Name;
-            if (!Ext.Array.contains(teams,team)){
-                teams.push(team);
-            }
-        });
-        return teams;
-    },
-    _setChartColorsOnSeries: function () {
-        return null;
-    }
-});
-
-
-
-Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
-    config: {
-        completedStates: ["Operate","Done"],
-        plannedDate: undefined,
-        timeboxScope: undefined,
-        featureModelName: "PortfolioItem/Feature",
-        releases: undefined
-    },
-    notCalculated: 0,
-
-    /**
-     * Features associated with the current Release that are currently in the completedState
-     */
-    featuresCompleted: undefined,
-    totalFeatures: undefined,
-    plannedFeatures: undefined,
-    newFeaturesInRelease: undefined,
-    descopedFeatures: undefined,
-    doneFeaturesWithIncompleteDod: undefined,
-
-    constructor: function (config) {
-        this.mergeConfig(config);
         this.callParent([this.config]);
     },
-    _getStartFind: function(release_oids){
-        var release_start_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseStartDate'));
-
-        return {
-            _TypeHierarchy: this.featureModelName,
-            _ProjectHierarchy: this.context.getProject().ObjectID,
-            __At: release_start_date,
-            Release: {$in: release_oids}
-        };
-    },
-    _getEndFind: function(release_oids){
-        var release_end_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseDate'));
-        if (release_end_date > new Date()){
-            release_end_date = "current";
-        }
-        return {
-            _TypeHierarchy: this.featureModelName,
-            _ProjectHierarchy: this.context.getProject().ObjectID,
-            __At: release_end_date,
-            Release: {$in: release_oids}
-        };
-    },
-    calculate: function(){
-        var deferred = Ext.create('Deft.Deferred'),
-            release_oids = _.map(this.releases, function(r){return r.get('ObjectID')}),
-            fetch = ['ObjectID','c_FeatureDeploymentType','State','Project'];
+    initComponent: function() {
+        this.callParent(arguments);
 
         var promises = [
-            Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(this._getStartFind(release_oids), fetch,['Project']),
-            Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(this._getEndFind(release_oids), fetch,['State','Project']),
-            this.getDoneItemsWithIncompleteDoD()
+            this._fetchFeaturesComplete(),
+            this._fetchDoneItemsWithIncompleteDoD(),
+            this._fetchTotalFeatures()
         ];
-
+        console.log('blah');
         Deft.Promise.all(promises).then({
             scope: this,
             success: function(results){
-                this.startRecords = results[0];
-                this.endRecords = results[1];
+                var completedWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[1]),
+                    completed_features = results[0],
+                    total_features = results[2];
 
-                this.featuresOnDay0 = _.map(results[0], function(r){ return r.get('ObjectID')}),
-                this.featuresCurrentOrOnLastDayOfRelease = _.map(results[1], function(r){return r.get('ObjectID')}),
-                this.featuresDescoped = Ext.Array.difference(this.featuresOnDay0, this.featuresCurrentOrOnLastDayOfRelease),
-                this.featuresAdded = Ext.Array.difference(this.featuresCurrentOrOnLastDayOfRelease, this.featuresOnDay0);
-                this.featuresCompleted = this._getCompletedFeatureOids(results[1]);
-                this.doneFeaturesWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[2]);
-                this._setDeployableFeatures(results[0],results[1]);
-                deferred.resolve();
+                var chart = this.add({
+                    xtype: 'rallychart',
+                    loadMask: false,
+                    chartConfig: this._getChartConfig(total_features,completed_features,completedWithIncompleteDoD),
+                    chartData: this._getChartData(completed_features,completedWithIncompleteDoD,total_features),
+                    _setChartColorsOnSeries: function (series) {
+                        return null;
+                    }
+                });
+                chart.setHeight(this.height);
+                chart.setWidth(this.width);
             },
             failure: function(msg){
-                deferred.reject(msg);
+                console.log('faliaure', msg)
             }
         });
-        return deferred;
     },
-    _getCompletedFeatureOids: function(records){
-        var completed_records = [],
-            completed_states = this.completedStates;
+    _getChartConfig: function(totalFeatures, completedFeatures, incompleteDoDFeatures){
+        var title = this._getTitle(completedFeatures,totalFeatures,incompleteDoDFeatures);
 
-        _.each(records, function(r){
-            var state = r.get('State') || null;
-            if (Ext.Array.contains(completed_states, state)){
-                completed_records.push(r.get('ObjectID'));
-            }
-        }, this);
-        return completed_records;
-    },
-    _setDeployableFeatures: function(day0Features, currentFeatures){
-        var non_deployable = [],
-            deployable = [];
+        var x = this.width * .35,
+            y = this.height * .35;
 
+        console.log('x,y',x,y)
+        return {
+            colors: [
+                Rally.technicalservices.Color.featureCompleteColor,
+                Rally.technicalservices.Color.featureCompleteIncompleteDodColor,
+                Rally.technicalservices.Color.featureTotalColor
+            ],
 
-         _.each(currentFeatures, function(f){
-            var deployment_type = f.get('c_FeatureDeploymentType');
-            if (deployment_type && /^N\/A/.test(deployment_type)){
-                non_deployable.push(f.get('ObjectID'));
-            } else {
-                deployable.push(f.get('ObjectID'));
-            }
-        });
-
-        _.each(day0Features, function(f){
-            var deployment_type = f.get('c_FeatureDeploymentType'),
-                oid = f.get('ObjectID');
-            if (!Ext.Array.contains(deployable, oid) &&
-                    !Ext.Array.contains(non_deployable, oid)){
-
-                if (/^N\/A/.test(deployment_type)){
-                    non_deployable.push(oid);
-                } else {
-                    deployable.push(oid);
+            chart: {
+                plotBackgroundColor: null,
+                plotBorderWidth: 0,
+                plotShadow: false,
+                type: 'pie'
+            },
+            title: {
+                text: title,
+                //align: 'center',
+                verticalAlign: 'middle',
+                x: -x *.35,
+                y: -y *.65,
+                useHTML: true
+            },
+            tooltip: {
+                pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
+            },
+            plotOptions: {
+                pie: {
+                    dataLabels: {
+                        enabled: false
+                    },
+                    center: ['35%', '35%'],
+                    size: '75%'
                 }
             }
-        });
-
-        this.deployableFeatures = deployable;
-        this.nonDeployableFeatures = non_deployable;
-
+        };
     },
-    getDoneItemsWithIncompleteDoD: function(){
+    _getChartData: function(completedFeatures, completedWithIncompleteDoD, totalFeatures){
+        var data = [{
+            name: 'Delivered',
+            y: completedFeatures - completedWithIncompleteDoD,
+            color: Rally.technicalservices.Color.featureCompleteColor
+        },{
+            name: 'Delivered (Incompleted DoD)',
+            y: completedWithIncompleteDoD,
+            color: Rally.technicalservices.Color.featureCompleteIncompleteDodColor
+        },{
+            name: 'Not Delivered',
+            y: Math.max(totalFeatures - (completedFeatures),0),
+            color: Rally.technicalservices.Color.featureTotalColor
+        }];
+
+        return {
+            series: [{
+                name: 'Delivered',
+                data: data,
+                innerSize: '60%'
+            }]
+        };
+    },
+    _getTitle: function(completed_features, total_features, incomplete_dod_features){
+         if (total_features > 0) {
+            var pct_features_delivered = Number(completed_features / total_features * 100).toFixed(1),
+                pct_incompleted_dod = Number(incomplete_dod_features / total_features * 100).toFixed(1);
+
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
+                '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
+                pct_features_delivered, pct_incompleted_dod);
+        } else {
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>N/A</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">No<br/>Features</span><br/></div>');
+        }
+    },
+    _fetchTotalFeatures: function(){
         var filters = this.timeboxScope.getQueryFilter();
+
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
+    },
+    _fetchFeaturesComplete: function(){
+        var filters = this.timeboxScope.getQueryFilter();
+
+        var state_filters = [];
+        _.each(this.completedStates, function(s){
+            state_filters.push({
+                property: 'State.Name',
+                value: s
+            });
+        });
+        state_filters = Rally.data.wsapi.Filter.or(state_filters);
+        filters = filters.and(state_filters);
+
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
+    },
+    _fetchDoneItemsWithIncompleteDoD: function(){
+
+        var filters = [];
+        _.each(this.completedStates, function(s){
+            filters.push({
+                property: 'Feature.State.Name',
+                value: s
+            });
+        });
+        filters = Rally.data.wsapi.Filter.or(filters);
+
+        filters = filters.and(this.timeboxScope.getQueryFilter());
 
         filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
             property: 'c_DoDStoryType',
@@ -942,16 +772,6 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
             value: "Accepted"
         }));
 
-        var state_filters = [];
-        _.each(this.completedStates, function(state){
-            state_filters.push({
-                property: 'Feature.State.Name',
-                value: state
-            });
-        });
-        filters = filters.and(Rally.data.wsapi.Filter.or(state_filters));
-
-        //TODO - process the data to return the number of features
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords('HierarchicalRequirement',filters,['Feature','ObjectID']);
     },
     _getFeatureWithIncompleteDoDCount: function(records){
@@ -963,249 +783,35 @@ Ext.define('Rally.technicalservices.calculator.FeatureSummary',{
         });
         return features.length;
     }
+
+
 });
 
 
-Ext.define('Rally.technicalservices.chart.FeatureSummary', {
-    extend: 'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeaturesummary',
-
-    config: {
-
-        loadMask: false,
-
-        chartConfig: {
-            colors: [
-                Rally.technicalservices.Color.featureDeployedColor,
-                Rally.technicalservices.Color.featureNonDeployedColor
-            ],
-
-            chart: {
-                plotBackgroundColor: null,
-                plotBorderWidth: 0,
-                plotShadow: false,
-                type: 'bar'
-            },
-            title: {
-                text: null
-            },
-            xAxis: {
-                type: 'category',
-                labels: {
-                    enabled: true
-                }
-            },
-            yAxis: {
-                title: {
-                    text: 'Feature Count'
-                }
-            },
-            legend: {
-                layout: 'vertical',
-                align: 'right',
-                verticalAlign: 'bottom',
-                floating: true,
-                y: -30
-            },
-            tooltip: {
-                formatter: function () {
-
-                    return this.series.name + ': ' + this.y + '<br/>' +
-                        'Total: ' + this.point.stackTotal;
-                }
-            },
-            plotOptions: {
-                series: {
-                    point: {
-                        events: {
-                            click: function(){
-                                console.log('select',this);
-                                var data = Ext.create('Rally.technicalservices.DataPopover',{
-                                    modelName: this.series.chart.userOptions.chart.modelName,
-                                    fetch: this.series.chart.userOptions.chart.fetch,
-                                    title: Ext.String.format("{0} {1} Features ({2} items)", this.category, this.series.name, this.oids.length || 0),
-                                    oids: this.oids
-                                });
-                                data.show();
-                            }
-                        }
-                    },
-                    borderWidth: 0,
-                    stacking: "normal"
-                }
-            }
-        },
-        chartData: {
-            series: []
-        }
-
-    },
-    constructor: function(config) {
-        this.mergeConfig(config);
-
-        this.chartData.series = this._getSeries(config.featureSummaryCalculator);
-        this.callParent([this.config]);
-
-    },
-    initComponent: function() {
-        this.callParent(arguments);
-    },
-
-    _getSeries: function(calculator){
-
-        var categories = ['Total','Planned','Added','Descoped','Delivered'],
-            deployable_data = [0,0,0,0,0],
-            non_deployable_data = [0,0,0,0,0],
-            model = calculator.featureModelName,
-            serverFilters = [];
-
-        if (calculator.deployableFeatures && calculator.deployableFeatures.length > 0){
-            deployable_data = [
-                {y: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresOnDay0 || [], calculator.deployableFeatures).length,oids: _.intersection(calculator.featuresOnDay0 || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresAdded || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresAdded || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresDescoped || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresDescoped || [], calculator.deployableFeatures)},
-                {y: _.intersection(calculator.featuresCompleted || [], calculator.deployableFeatures).length, oids: _.intersection(calculator.featuresCompleted || [], calculator.deployableFeatures)}
-            ];
-        }
-
-        if (calculator.nonDeployableFeatures && calculator.nonDeployableFeatures.length > 0){
-            non_deployable_data = [
-                {y: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresCurrentOrOnLastDayOfRelease || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresOnDay0 || [], calculator.nonDeployableFeatures).length, oids:_.intersection(calculator.featuresOnDay0 || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresAdded || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresAdded || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresDescoped || [], calculator.nonDeployableFeatures).length, oids:_.intersection(calculator.featuresDescoped || [], calculator.nonDeployableFeatures)},
-                {y: _.intersection(calculator.featuresCompleted || [], calculator.nonDeployableFeatures).length, oids: _.intersection(calculator.featuresCompleted || [], calculator.nonDeployableFeatures)}
-            ];
-        }
-        this.chartData.categories = categories;
-        this.chartConfig.chart.modelName = calculator.featureModelName;
-        this.chartConfig.chart.fetch = ["FormattedID","Name","Project","State"];
-
-        var series =  [{
-                name: 'Deployable',
-                data: deployable_data,
-            }, {
-                name: 'Non-Deployable',
-                data: non_deployable_data
-        }];
-
-        return series;
-    },
-
-    _setChartColorsOnSeries: function () {
-        return null;
-    }
-});
-
-
-Ext.define("feature-summary", {
+Ext.define("features-delivered", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
-    autoScroll: false,
+
     componentCls: 'app',
+    autoScroll: false,
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
-    completedStates: ["Operate","Done"],
-    featureModelName: "PortfolioItem/Feature",
-
     onScopeChange: function(timeboxScope){
-
-        if (this.down('#display_box')){
-            this.down('#display_box').destroy();
+        if (this.down('tsfeaturesdelivered')){
+            this.down('tsfeaturesdelivered').destroy();
         }
+
         this.add({
-            xtype: 'container',
-            itemId: 'display_box',
-            width: '100%',
-            layout:'vbox'
+            xtype: 'tsfeaturesdelivered',
+            timeboxScope: timeboxScope,
+            featureModelName: 'PortfolioItem/Feature',
+            completedStates: ["Operate","Done"],
+            width: this.getWidth() || 300,
+            height: this.getHeight() || 300
         });
-
-        this.setLoading(true);
-        Rally.technicalservices.WsapiToolbox.fetchReleases(timeboxScope).then({
-            scope: this,
-            success: function(releases){
-                this.releases = releases;
-
-                var calculator = Ext.create('Rally.technicalservices.calculator.FeatureSummary',{
-                    timeboxScope: this.getContext().getTimeboxScope(),
-                    context: this.getContext(),
-                    releases: releases,
-                    plannedDate: timeboxScope.getRecord().get('ReleaseStartDate'),
-                    featureModelName: this.featureModelName,
-                    completedStates: this.completedStates
-                });
-                calculator.calculate().then({
-                    scope: this,
-                    success: function(){
-                        this.setLoading(false);
-                        this.calculator = calculator;
-
-
-                        this.down('#display_box').add({
-                            xtype: 'rallybutton',
-                            text: 'Team View',
-                            cls: 'secondary rly-small',
-                            listeners: {
-                                scope: this,
-                                click: this._updateView
-                            }
-                        });
-                        this._showSummaryView(calculator);
-
-                    }
-                });
-            },
-            failure: function(msg){
-                Rally.ui.notify.Notifier.showError({message: msg});
-            }
-        });
-
-    },
-    _updateView: function(btn){
-        if (btn.text == 'Team View'){
-            btn.setText("< Back to Summary");
-            this._showTeamView(this.calculator);
-        } else {
-            btn.setText("Team View");
-            this._showSummaryView(this.calculator);
-        }
-    },
-    _showTeamView: function(calculator){
-        var chart_width = this.getWidth();
-        this.logger.log('width', chart_width);
-        if (this.down('tsfeaturesummarybyteam')){
-            this.down('tsfeaturesummarybyteam').destroy();
-        }
-        if (this.down('tsfeaturesummary')){
-            this.down('tsfeaturesummary').destroy();
-        }
-        var summary = this.down('#display_box').add({
-            xtype: 'tsfeaturesummarybyteam',
-            padding: 15,
-            featureSummaryCalculator: calculator
-        });
-        summary.setWidth(chart_width *.95);
-        summary.setHeight(300);
-    },
-    _showSummaryView: function(calculator){
-        var chart_width = this.getWidth();
-        this.logger.log('width', chart_width);
-        if (this.down('tsfeaturesummary')){
-            this.down('tsfeaturesummary').destroy();
-        }
-        if (this.down('tsfeaturesummarybyteam')){
-            this.down('tsfeaturesummarybyteam').destroy();
-        }
-        var summary = this.down('#display_box').add({
-            xtype: 'tsfeaturesummary',
-            padding: 15,
-            featureSummaryCalculator: calculator
-        });
-        summary.setWidth(chart_width *.95);
-        summary.setHeight(300);
+        this.logger.log('width, height', this.getWidth(), this.getHeight());
     },
     getOptions: function() {
         return [
@@ -1216,16 +822,16 @@ Ext.define("feature-summary", {
             }
         ];
     },
-    
+
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
     },
-    
+
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     },
-    
+
     //onSettingsUpdate:  Override
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
@@ -1235,8 +841,8 @@ Ext.define("feature-summary", {
 });
 
             
-               Rally.launchApp('feature-summary', {
-                   name: 'Feature Summary'
+               Rally.launchApp('features-delivered', {
+                   name: 'Features Delivered'
                });
         });
     </script>
