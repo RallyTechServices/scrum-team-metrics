@@ -2,7 +2,7 @@ Ext.define("feature-summary", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
-
+    autoScroll: false,
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
@@ -45,7 +45,7 @@ Ext.define("feature-summary", {
 
                         this.down('#display_box').add({
                             xtype: 'rallybutton',
-                            text: 'Team Drilldown',
+                            text: 'Team View',
                             cls: 'secondary rly-small',
                             listeners: {
                                 scope: this,
@@ -64,11 +64,11 @@ Ext.define("feature-summary", {
 
     },
     _updateView: function(btn){
-        if (btn.text == 'Team Drilldown'){
+        if (btn.text == 'Team View'){
             btn.setText("< Back to Summary");
             this._showTeamView(this.calculator);
         } else {
-            btn.setText("Team Drilldown");
+            btn.setText("Team View");
             this._showSummaryView(this.calculator);
         }
     },

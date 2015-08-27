@@ -5,12 +5,12 @@ Ext.define('Rally.technicalservices.Color',{
     featureCompleteIncompleteDodColor: '#a6c96a',
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
-    featureDeployedColor: '#80699B',
-    featureNonDeployedColor: '#333333',
+    featureDeployedColor: '#8085e9',
+    featureNonDeployedColor: '#696969',
 
-    featurePlanned: '#90ed7d',
-    featureAdded:'#8085e9',
-    featureDescoped: '#492970',
+    featurePlanned: '#2f7ed8',
+    featureAdded:'#8bbc21',
+    featureDescoped: '#910000',
 
     classificationOnTrack: 'green',
     classificationHighRisk: 'red',
