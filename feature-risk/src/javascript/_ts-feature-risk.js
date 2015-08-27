@@ -6,7 +6,8 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     config: {
         featureModelName: undefined,
         completedStates: undefined,
-        timeboxScope: undefined
+        timeboxScope: undefined,
+        dataFetch: ["FormattedID","Name","Project","DisplayColor"]
     },
     height: 300,
     border: 0,
@@ -96,20 +97,28 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     _getSummaryChartData: function(records){
 
         var color_data = {},
-            data = [];
+            data = [],
+            oids = {};
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;
+            if (!oids[classification]){
+                oids[classification] = [];
+            }
+            oids[classification].push(r.get('ObjectID'));
         }, this);
 
         _.each(this.classificationChartColorMapping, function(color, classification){
             data.push({
                 name: classification,
                 y: color_data[classification] || 0,
-                color: this.classificationChartColorMapping[classification]
+                oids: oids[classification] || [],
+                color: this.classificationChartColorMapping[classification],
+                modelName: this.featureModelName,
+                fetch: this.dataFetch,
             });
         }, this);
 
@@ -152,6 +161,22 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             },
             plotOptions: {
                 pie: {
+                    point: {
+                    events: {
+                        click: function () {
+                            console.log('pointclikc', this)
+                            var data = Ext.create('Rally.technicalservices.DataPopover',{
+                                modelName: this.modelName,
+                                fetch: this.fetch,
+                                title: Ext.String.format("{0} Features ({1} items)", this.name, this.oids.length || 0),
+                                oids: this.oids,
+                                width: Rally.getApp().getWidth(),
+                                maxHeight: Rally.getApp().getHeight()
+                            });
+                            data.show();
+                        }
+                    }
+                    },
                     dataLabels: {
                         enabled: true,
                         distance: -3,

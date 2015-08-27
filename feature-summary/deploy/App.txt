@@ -3,11 +3,11 @@
 <head>
     <title>Feature Summary</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 13:48:37 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 13:56:50 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:37 GMT-0700 (PDT)";
-        var CHECKSUM = 38301332665;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 13:56:50 GMT-0700 (PDT)";
+        var CHECKSUM = 39682977825;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -242,7 +242,7 @@ Ext.define('Rally.technicalservices.DataPopover', {
     id: 'grid-popover',
     cls: 'grid-popover',
 
-    width: 750,
+    maxWidth: 400,
     maxHeight: 300,
 
     layout: 'fit',
@@ -603,6 +603,28 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
+    _fetchAllowedValues: function(model,field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: model,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        var values = Ext.Array.map(records, function(record) {
+                            return record.get('StringValue');
+                        });
+                        deferred.resolve(values);
+                    }
+                });
+            },
+            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
+        });
+        
+        return deferred;
+
+    }
 });
 
 Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
@@ -1019,12 +1041,13 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                     point: {
                         events: {
                             click: function(){
-                                console.log('select',this);
                                 var data = Ext.create('Rally.technicalservices.DataPopover',{
                                     modelName: this.series.chart.userOptions.chart.modelName,
                                     fetch: this.series.chart.userOptions.chart.fetch,
                                     title: Ext.String.format("{0} {1} Features ({2} items)", this.category, this.series.name, this.oids.length || 0),
-                                    oids: this.oids
+                                    oids: this.oids,
+                                    width: Rally.getApp().getWidth(),
+                                    maxHeight: Rally.getApp().getHeight()
                                 });
                                 data.show();
                             }

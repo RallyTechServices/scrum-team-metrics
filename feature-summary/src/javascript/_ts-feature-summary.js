@@ -51,12 +51,13 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                     point: {
                         events: {
                             click: function(){
-                                console.log('select',this);
                                 var data = Ext.create('Rally.technicalservices.DataPopover',{
                                     modelName: this.series.chart.userOptions.chart.modelName,
                                     fetch: this.series.chart.userOptions.chart.fetch,
                                     title: Ext.String.format("{0} {1} Features ({2} items)", this.category, this.series.name, this.oids.length || 0),
-                                    oids: this.oids
+                                    oids: this.oids,
+                                    width: Rally.getApp().getWidth(),
+                                    maxHeight: Rally.getApp().getHeight()
                                 });
                                 data.show();
                             }
