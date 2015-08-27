@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Risk</title>
+    <title>Feature Burnup</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:15:44 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 13:48:53 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:15:44 GMT-0700 (PDT)";
-        var CHECKSUM = 22025813769;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:53 GMT-0700 (PDT)";
+        var CHECKSUM = 21469489632;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -242,7 +242,7 @@ Ext.define('Rally.technicalservices.DataPopover', {
     id: 'grid-popover',
     cls: 'grid-popover',
 
-    maxWidth: 400,
+    width: 750,
     maxHeight: 300,
 
     layout: 'fit',
@@ -603,344 +603,259 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
-    
-    _fetchAllowedValues: function(model,field_name) {
-        var deferred = Ext.create('Deft.Deferred');
-
-        Rally.data.ModelFactory.getModel({
-            type: model,
-            success: function(model) {
-                model.getField(field_name).getAllowedValueStore().load({
-                    callback: function(records, operation, success) {
-                        var values = Ext.Array.map(records, function(record) {
-                            return record.get('StringValue');
-                        });
-                        deferred.resolve(values);
-                    }
-                });
-            },
-            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
-        });
-        
-        return deferred;
-
-    }
 });
 
-
-Ext.define('Rally.technicalservices.chart.FeatureRisk', {
-    extend: 'Ext.panel.Panel', //'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeatureriskpie',
-
+Ext.define('Rally.technicalservices.calculator.FeatureBurnup',{
+    extend: 'Rally.data.lookback.calculator.TimeSeriesCalculator',
     config: {
-        featureModelName: undefined,
+        releaseOids: undefined,
         completedStates: undefined,
-        timeboxScope: undefined,
-        dataFetch: ["FormattedID","Name","Project","DisplayColor"]
+        timeboxScope: undefined
     },
-    height: 300,
-    border: 0,
-    layout: {type: 'vbox'},
-    displayColorClassificationMapping: {
-        '#107c1e': 'On Track',
-        '#df1a7b': 'High Risk',
-        '#fce205': 'Moderate Risk',
-        '#f9a814': 'High Risk',
-        '#ee6c19': 'High Risk'
-    },
-    classificationChartColorMapping: {
-        'Other': Rally.technicalservices.Color.classificationOther,
-        'On Track': Rally.technicalservices.Color.classificationOnTrack,
-        'Moderate Risk': Rally.technicalservices.Color.classificationModerateRisk,
-        'High Risk': Rally.technicalservices.Color.classificationHighRisk,
-    },
-
     constructor: function(config) {
         this.mergeConfig(config);
         this.callParent([this.config]);
     },
-    initComponent: function() {
-        this.callParent(arguments);
+    runCalculation: function (snapshots) {
+        console.log('runcalculator')
+        this._calculateCycleTimes(snapshots);
 
-        this._fetchFeatureColors().then({
-            scope: this,
-            success: function(records){
-                this.records = records;
-                this.add({
-                    xtype: 'rallybutton',
-                    text: 'Team View',
-                    cls: 'secondary rly-small',
-                    listeners: {
-                        scope: this,
-                        click: this._changeView
-                    }
-                });
-                this._showSummaryView(records);
+        var calculatorConfig = this._prepareCalculatorConfig(),
+            seriesConfig = this._buildSeriesConfig(calculatorConfig);
+
+        var calculator = this.prepareCalculator(calculatorConfig);
+        calculator.addSnapshots(snapshots, this._getStartDate(snapshots), this._getEndDate(snapshots));
+
+        return this._transformLumenizeDataToHighchartsSeries(calculator, seriesConfig);
+    },
+    getMetrics: function () {
+        var completedStates = this.completedStates;
+
+        return [
+            {
+                "field": "ReleaseFeature",
+                "as": "Total Features",
+                "display": "line",
+                "f": "sum"
             },
-            failure: function(msg){
+            {
+                "field": "ReleaseFeature",
+                "as": "Delivered Features",
+                "f": "filteredSum",
+                "filterField": "State",
+                "filterValues": completedStates,
+                "display": "area"
+            }];
+    },
+    getDerivedFieldsOnInput: function(){
+        var releases = this.releaseOids;
 
+        return [{
+            "as": "ReleaseFeature",
+            "f": function(snapshot){
+                if (snapshot.Release && Ext.Array.contains(releases, snapshot.Release)) {
+                    return 1;
+                }
+                return 0;
             }
-        });
+        }];
     },
-    _changeView: function(btn){
-        if (this.down('rallychart')){
-            this.down('rallychart').destroy();
-        }
+    _calculateCycleTimes: function(snapshots){
+        /**
+         * _getFeatureCycleTime is calculated as the average cycle time from either
+         * (1) the first day of the release if the feature was planned
+         * (2) the day the feature was added to the release if the feature was added
+         *
+         * to the day the feature was set to the completed state.
+         *
+         * @param addedFeatureSnapshots
+         * @param featuresDoneSnapshots
+         * @returns {number}
+         * @private
+         */
 
-        if (btn.text == "Team View"){
-            this._showTeamView(this.records);
-            btn.setText("< Back to Summary");
+        var release_start_date = Rally.util.DateTime.toIsoString(this.timeboxScope.getRecord().get('ReleaseStartDate')),
+            completed_values = this.completedStates;
 
-        } else {
-            this._showSummaryView(this.records);
-            btn.setText("Team View");
-        }
-    },
-    _showSummaryView: function(records){
+            var cycle_times = [],
+                snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOid(snapshots),
+                durations = [];
 
-        var chart = this.add({
-            xtype: 'rallychart',
-            loadMask: false,
-            chartConfig: this._getSummaryChartConfig(),
-            chartData: this._getSummaryChartData(records)
-        });
-        chart.setHeight(this.height - 25);
-        chart.setWidth(this.width);
-    },
-    _showTeamView: function(records){
-        var chart_data = this._getTeamChartData(records);
+            _.each(snaps_by_oid, function(snaps, oid){
+                var start_date = Rally.util.DateTime.fromIsoString(snaps[0]._ValidFrom),
+                    end_date = null,
+                    prev_snap = null;
 
-        var chart = this.add({
-            xtype: 'rallychart',
-            loadMask: false,
-            chartConfig: this._getTeamChartConfig(),
-            chartData: chart_data,
-            _setChartColorsOnSeries: function (series) {
-                return null;
-            }
+                for (var i =0; i < snaps.length; i++){
+                    var snap = snaps[i];
+                    if (Ext.Array.contains(completed_values, snap.State) &&
+                        (prev_snap == null || !Ext.Array.contains(completed_values, prev_snap.State))){
+                        end_date = Rally.util.DateTime.fromIsoString(snap._ValidFrom);
+                    }
+                    prev_snap = snap;
+                }
 
-        });
-        chart.setHeight(this.height - 25);
-        chart.setWidth(this.width);
-    },
-    _getSummaryChartData: function(records){
+                if (Date.parse(start_date) < Date.parse(release_start_date)){
+                    start_date = release_start_date;
+                }
 
-        var color_data = {},
-            data = [],
-            oids = {};
-
-        _.each(records, function(r){
-            var color = r.get('DisplayColor') || 'Other';
-            var classification = this.displayColorClassificationMapping[color] || 'Other';
-            color_data[classification] = color_data[classification] || 0;
-            color_data[classification]++;
-            if (!oids[classification]){
-                oids[classification] = [];
-            }
-            oids[classification].push(r.get('ObjectID'));
-        }, this);
-
-        _.each(this.classificationChartColorMapping, function(color, classification){
-            data.push({
-                name: classification,
-                y: color_data[classification] || 0,
-                oids: oids[classification] || [],
-                color: this.classificationChartColorMapping[classification],
-                modelName: this.featureModelName,
-                fetch: this.dataFetch,
+                if (end_date && start_date){
+                    cycle_times.push({objectId: oid, startDate: start_date, endDate: end_date});
+                    durations.push(Rally.util.DateTime.getDifference(new Date(end_date), new Date(start_date), 'day'));
+                }
             });
-        }, this);
 
-        return {
-            series: [{
-                name: 'Risk Color',
-                data: data,
-                size: '80%',
-                dataLabels: {
-                    formatter: function(){
-                        return this.point.name + ': ' + this.y + '%'
-                    }
-                }
-            }]
-        };
-    },
-    _getSummaryChartConfig: function(){
-        var x = this.width * .35,
-            y = this.height * .25 + 25;
+            this.avgCycleTime = Ext.Array.mean(durations);
 
-        return  {
-            colors: [
-                Rally.technicalservices.Color.classificationOnTrack,
-                Rally.technicalservices.Color.classificationHighRisk,
-                Rally.technicalservices.Color.classificationModerateRisk,
-                Rally.technicalservices.Color.classificationOther
+    }
+});
+
+Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
+    extend: 'Rally.ui.chart.Chart',
+    alias: 'widget.tsfeatureburnup',
+
+    config: {
+
+        /**
+         * Input configurations
+         */
+        timeboxScope:  undefined,
+        releases: undefined,
+        context: undefined,
+        featureModelName: undefined,
+        completedStates: undefined,
+
+        loadMask: false,
+        /**
+         * Chart configurations
+         */
+
+        calculatorType: 'Rally.technicalservices.calculator.FeatureBurnup',
+        calculatorConfig: undefined,
+        storeType: 'Rally.data.lookback.SnapshotStore',
+
+        storeConfig: {
+            fetch: [
+                'ObjectID',
+                'Release',
+                '_PreviousValues.Release',
+                '_ValidFrom',
+                'State',
+                '_PreviousValues.State'
             ],
+            sort: {
+                '_ValidFrom': 1
+            },
+            limit: Infinity,
+            compress: true,
+            removeUnauthorizedSnapshots: true,
+            hydrate: ['State','_PreviousValues.State']
+        },
+
+        chartConfig: {
+            colors: ['#2f7ed8','#8bbc21'],
 
             chart: {
-                plotBackgroundColor: null,
-                plotBorderWidth: 0,
-                plotShadow: false,
-                type: 'pie'
+                defaultSeriesType: 'area',
+                zoomType: 'xy'
             },
             title: {
-                text: null
-            },
-            tooltip: {
-                pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
-            },
-            plotOptions: {
-                pie: {
-                    point: {
-                    events: {
-                        click: function () {
-                            console.log('pointclikc', this)
-                            var data = Ext.create('Rally.technicalservices.DataPopover',{
-                                modelName: this.modelName,
-                                fetch: this.fetch,
-                                title: Ext.String.format("{0} Features ({1} items)", this.name, this.oids.length || 0),
-                                oids: this.oids,
-                                width: Rally.getApp().getWidth(),
-                                maxHeight: Rally.getApp().getHeight()
-                            });
-                            data.show();
-                        }
-                    }
-                    },
-                    dataLabels: {
-                        enabled: true,
-                        distance: -3,
-                        style: {
-                            color: 'black',
-                            fontSize: '10px'
-                        },
-                        format: '{point.name}: {point.y}'
-                    },
-                    center: [x, y],
-                    size: '50%'
-                }
-            }
-        };
-    },
-    _getTeamChartConfig: function() {
-        return  {
-            colors: [
-                Rally.technicalservices.Color.classificationOnTrack,
-                Rally.technicalservices.Color.classificationHighRisk,
-                Rally.technicalservices.Color.classificationModerateRisk,
-                Rally.technicalservices.Color.classificationOther
-            ],
-
-            chart: {
-                type: 'bar'
-            },
-            title: {
-                text: null
-            },
-            tooltip: {
-                formatter: function(){
-                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Number(this.point.y));
-                }
+                text: ''
             },
             xAxis: {
-                type: 'category',
+                categories: [],
+                tickmarkPlacement: 'on',
+                tickInterval: 5,
                 labels: {
+                    rotation: -45,
                     formatter: function(){
-                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
+                        return Rally.util.DateTime.format(Rally.util.DateTime.fromIsoString(this.value), 'M-d');
                     }
                 }
             },
-            yAxis: {
-                title: { text: '# Features'}
+            yAxis: [
+                {
+                    title: {
+                        text: 'Feature Count'
+                    }
+                }
+            ],
+            legend: {
+                align: 'center',
+                verticalAlign: 'bottom',
+                backgroundColor: 'white',
+                borderColor: '#CCC',
+                borderWidth: 1,
+                shadow: false
+            },
+            tooltip: {
+                formatter: function() {
+                    return '' + this.x + '<br />' + this.series.name + ': ' + this.y;
+                }
             },
             plotOptions: {
-                bar: {
-                    dataLabels: {
-                        enabled: false
-                    }
-                },
                 series: {
-                    stacking: 'normal'
+                    marker: {
+                        enabled: false,
+                        states: {
+                            hover: {
+                                enabled: true
+                            }
+                        }
+                    },
+                    groupPadding: 0.01
+                },
+                column: {
+                    stacking: null,
+                    shadow: false
                 }
-            },
-            legend: {
-                enabled: false
             }
-        };
-    },
-    _getTeamChartData: function(records){
-        //categories - projects
-        //series = risks
-        var project_hash = {},
-            classifications = _.keys(this.classificationChartColorMapping);
-
-        _.each(records, function(r){
-            var proj = r.get('Project')._refObjectName;
-
-            if (!_.has(project_hash, proj)){
-                project_hash[proj] = {name: proj};
-                _.each(classifications, function(c){
-                    project_hash[proj][c] = 0;
-                });
-            }
-        });
-
-        _.each(records, function(r){
-            var color = r.get('DisplayColor') || 'Other',
-                key = r.get('Project')._refObjectName;
-
-            var classification = this.displayColorClassificationMapping[color] || 'Other';
-            project_hash[key][classification]++;
-        }, this);
-
-        var sorted_projects = _.sortBy(project_hash, function(obj){ return -obj["High Risk"] || 0; });
-
-        var categories = _.pluck(sorted_projects, "name"),
-            data = {},
-            series = [];
-
-        _.each(classifications, function(cl){
-            data[cl] = [];
-            var totals = [];
-            _.each(categories, function(ct){
-                var total = Ext.Array.sum(_.reject(_.values(project_hash[ct]), function(val){ return isNaN(val);}));
-                if (total > 0){
-                    data[cl].push(project_hash[ct][cl]);
-                } else {
-                    data[cl].push(0);
-                }
-
-            });
-            series.push({
-                name: cl,
-                data: data[cl] || [],
-                color: this.classificationChartColorMapping[cl],
-                totals: totals
-            });
-        }, this);
-
-        return {
-            categories: categories,
-            series: series
         }
 
     },
-    _fetchFeatureColors: function(){
-        var filters = this.timeboxScope.getQueryFilter(),
-            fetch = ['ObjectID','DisplayColor','Project'];
+    constructor: function(config) {
+        this.mergeConfig(config);
 
-        var state_filters = [];
-        _.each(this.completedStates, function(s){
-            state_filters.push({
-                property: 'State.Name',
-                operator: '!=',
-                value: s
-            });
-        });
 
-        state_filters = Rally.data.wsapi.Filter.and(state_filters);
-        filters = filters.and(state_filters);
+        var release_start_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseStartDate'), true),
+            release_end_date = Rally.util.DateTime.toIsoString(config.timeboxScope.getRecord().get('ReleaseDate'), true);
 
-        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName, filters, fetch);
+        var release_oids = _.map(config.releases, function(rel){return rel.get('ObjectID')});
+
+        this.config.calculatorConfig = {
+            releaseOids: release_oids,
+            completedStates: config.completedStates,
+            startDate: release_start_date,
+            endDate: release_end_date,
+            projectOid: config.context.getProject().ObjectID,
+            timeboxScope: config.timeboxScope
+        };
+
+        var find = {
+            _TypeHierarchy: config.featureModelName,
+            _ProjectHierarchy: config.context.getProject().ObjectID,
+            _ValidTo:  {$gte: release_start_date},
+            _ValidFrom: {$lte: release_end_date},
+             Release: {$in: release_oids}
+        };
+        this.storeConfig.find = find;
+        this.callParent([this.config]);
+
+    },
+    _validateAggregation: function () {
+        if (!this._haveDataToRender()) {
+            return this._setErrorMessage(this.aggregationErrorMessage);
+        }
+        this._setSubtitle(this.calculator.avgCycleTime);
+        this._renderChart();
+    },
+    _setSubtitle: function(avgCycleTime){
+        this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+
+    },
+
+    initComponent: function() {
+        this.callParent(arguments);
     },
     //Overriding this function because we want to set colors ourselves.
     _setChartColorsOnSeries: function (series) {
@@ -948,31 +863,85 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     }
 });
 
-Ext.define("feature-risk", {
+
+
+Ext.define("feature-burnup", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
 
-    componentCls: 'app',
     autoScroll: false,
+
+    componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
+    completedStates: ["Operate","Done"],
+    featureModelName: "PortfolioItem/Feature",
+
     onScopeChange: function(timeboxScope){
-        if (this.down('tsfeatureriskpie')){
-            this.down('tsfeatureriskpie').destroy();
+        this.setLoading(true);
+
+        this._fetchReleases(timeboxScope).then({
+            scope: this,
+            success: function(releases){
+                this.releases = releases;
+                this.logger.log('_fetchReleases Success', releases);
+                this.setLoading(false);
+                var burnup_chart = this.add({
+                    xtype: 'tsfeatureburnup',
+                    timeboxScope: this.getContext().getTimeboxScope(),
+                    context: this.getContext(),
+                    completedStates: this.completedStates,
+                    releases: releases,
+                    featureModelName: this.featureModelName
+                });
+                //burnup_chart.setWidth(this.width *.95);
+                burnup_chart.setHeight(300);
+            },
+            failure: function(msg){
+                Rally.ui.notify.Notifier.showError({message: msg});
+            }
+        });
+    },
+    _fetchReleases: function(timebox){
+        this.logger.log('_fetchReleases Loading');
+
+        var deferred = Ext.create('Deft.Deferred'),
+            rec = timebox.getRecord(),
+            me = this;
+
+        if (rec == null) {
+            deferred.resolve([]);
         }
 
-        this.add({
-            xtype: 'tsfeatureriskpie',
-            timeboxScope: timeboxScope,
-            featureModelName: 'PortfolioItem/Feature',
-            completedStates: ["Operate","Done"],
-            width: this.getWidth() || 300,
-            height: this.getHeight() || 300
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'Release',
+            fetch: ['ObjectID'],
+            filters: [{
+                property: 'Name',
+                value: rec.get('Name')
+            },{
+                property: 'ReleaseStartDate',
+                value: rec.get('ReleaseStartDate')
+            },{
+                property: 'ReleaseDate',
+                value: rec.get('ReleaseDate')
+            }],
+            limit: Infinity
+        }).load({
+            callback: function(records, operation, success){
+                me.logger.log('_fetchReleases',success,records.length,operation);
+                if (success){
+                    deferred.resolve(records);
+                }   else {
+                    deferred.reject("Error loading Releases: " + operation.error.errors.join(','));
+                }
+            }
         });
-        this.logger.log('width, height', this.getWidth(), this.getHeight());
+        return deferred;
     },
+    
     getOptions: function() {
         return [
             {
@@ -1001,8 +970,8 @@ Ext.define("feature-risk", {
 });
 
             
-               Rally.launchApp('feature-risk', {
-                   name: 'Feature Risk'
+               Rally.launchApp('feature-burnup', {
+                   name: 'Feature Burnup'
                });
         });
     </script>

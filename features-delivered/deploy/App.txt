@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Risk</title>
+    <title>Features Delivered</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:15:44 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 13:48:45 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:15:44 GMT-0700 (PDT)";
-        var CHECKSUM = 22025813769;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:45 GMT-0700 (PDT)";
+        var CHECKSUM = 17892138276;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -242,7 +242,7 @@ Ext.define('Rally.technicalservices.DataPopover', {
     id: 'grid-popover',
     cls: 'grid-popover',
 
-    maxWidth: 400,
+    width: 750,
     maxHeight: 300,
 
     layout: 'fit',
@@ -603,57 +603,12 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
-    
-    _fetchAllowedValues: function(model,field_name) {
-        var deferred = Ext.create('Deft.Deferred');
-
-        Rally.data.ModelFactory.getModel({
-            type: model,
-            success: function(model) {
-                model.getField(field_name).getAllowedValueStore().load({
-                    callback: function(records, operation, success) {
-                        var values = Ext.Array.map(records, function(record) {
-                            return record.get('StringValue');
-                        });
-                        deferred.resolve(values);
-                    }
-                });
-            },
-            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
-        });
-        
-        return deferred;
-
-    }
 });
 
-
-Ext.define('Rally.technicalservices.chart.FeatureRisk', {
+Ext.define('Rally.technicalservices.chart.FeaturesDelivered', {
     extend: 'Ext.panel.Panel', //'Rally.ui.chart.Chart',
-    alias: 'widget.tsfeatureriskpie',
-
-    config: {
-        featureModelName: undefined,
-        completedStates: undefined,
-        timeboxScope: undefined,
-        dataFetch: ["FormattedID","Name","Project","DisplayColor"]
-    },
-    height: 300,
+    alias: 'widget.tsfeaturesdelivered',
     border: 0,
-    layout: {type: 'vbox'},
-    displayColorClassificationMapping: {
-        '#107c1e': 'On Track',
-        '#df1a7b': 'High Risk',
-        '#fce205': 'Moderate Risk',
-        '#f9a814': 'High Risk',
-        '#ee6c19': 'High Risk'
-    },
-    classificationChartColorMapping: {
-        'Other': Rally.technicalservices.Color.classificationOther,
-        'On Track': Rally.technicalservices.Color.classificationOnTrack,
-        'Moderate Risk': Rally.technicalservices.Color.classificationModerateRisk,
-        'High Risk': Rally.technicalservices.Color.classificationHighRisk,
-    },
 
     constructor: function(config) {
         this.mergeConfig(config);
@@ -662,118 +617,48 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     initComponent: function() {
         this.callParent(arguments);
 
-        this._fetchFeatureColors().then({
+        var promises = [
+            this._fetchFeaturesComplete(),
+            this._fetchDoneItemsWithIncompleteDoD(),
+            this._fetchTotalFeatures()
+        ];
+        console.log('blah');
+        Deft.Promise.all(promises).then({
             scope: this,
-            success: function(records){
-                this.records = records;
-                this.add({
-                    xtype: 'rallybutton',
-                    text: 'Team View',
-                    cls: 'secondary rly-small',
-                    listeners: {
-                        scope: this,
-                        click: this._changeView
+            success: function(results){
+                var completedWithIncompleteDoD = this._getFeatureWithIncompleteDoDCount(results[1]),
+                    completed_features = results[0],
+                    total_features = results[2];
+
+                var chart = this.add({
+                    xtype: 'rallychart',
+                    loadMask: false,
+                    chartConfig: this._getChartConfig(total_features,completed_features,completedWithIncompleteDoD),
+                    chartData: this._getChartData(completed_features,completedWithIncompleteDoD,total_features),
+                    _setChartColorsOnSeries: function (series) {
+                        return null;
                     }
                 });
-                this._showSummaryView(records);
+                chart.setHeight(this.height);
+                chart.setWidth(this.width);
             },
             failure: function(msg){
-
+                console.log('faliaure', msg)
             }
         });
     },
-    _changeView: function(btn){
-        if (this.down('rallychart')){
-            this.down('rallychart').destroy();
-        }
+    _getChartConfig: function(totalFeatures, completedFeatures, incompleteDoDFeatures){
+        var title = this._getTitle(completedFeatures,totalFeatures,incompleteDoDFeatures);
 
-        if (btn.text == "Team View"){
-            this._showTeamView(this.records);
-            btn.setText("< Back to Summary");
-
-        } else {
-            this._showSummaryView(this.records);
-            btn.setText("Team View");
-        }
-    },
-    _showSummaryView: function(records){
-
-        var chart = this.add({
-            xtype: 'rallychart',
-            loadMask: false,
-            chartConfig: this._getSummaryChartConfig(),
-            chartData: this._getSummaryChartData(records)
-        });
-        chart.setHeight(this.height - 25);
-        chart.setWidth(this.width);
-    },
-    _showTeamView: function(records){
-        var chart_data = this._getTeamChartData(records);
-
-        var chart = this.add({
-            xtype: 'rallychart',
-            loadMask: false,
-            chartConfig: this._getTeamChartConfig(),
-            chartData: chart_data,
-            _setChartColorsOnSeries: function (series) {
-                return null;
-            }
-
-        });
-        chart.setHeight(this.height - 25);
-        chart.setWidth(this.width);
-    },
-    _getSummaryChartData: function(records){
-
-        var color_data = {},
-            data = [],
-            oids = {};
-
-        _.each(records, function(r){
-            var color = r.get('DisplayColor') || 'Other';
-            var classification = this.displayColorClassificationMapping[color] || 'Other';
-            color_data[classification] = color_data[classification] || 0;
-            color_data[classification]++;
-            if (!oids[classification]){
-                oids[classification] = [];
-            }
-            oids[classification].push(r.get('ObjectID'));
-        }, this);
-
-        _.each(this.classificationChartColorMapping, function(color, classification){
-            data.push({
-                name: classification,
-                y: color_data[classification] || 0,
-                oids: oids[classification] || [],
-                color: this.classificationChartColorMapping[classification],
-                modelName: this.featureModelName,
-                fetch: this.dataFetch,
-            });
-        }, this);
-
-        return {
-            series: [{
-                name: 'Risk Color',
-                data: data,
-                size: '80%',
-                dataLabels: {
-                    formatter: function(){
-                        return this.point.name + ': ' + this.y + '%'
-                    }
-                }
-            }]
-        };
-    },
-    _getSummaryChartConfig: function(){
         var x = this.width * .35,
-            y = this.height * .25 + 25;
+            y = this.height * .35;
 
-        return  {
+        console.log('x,y',x,y)
+        return {
             colors: [
-                Rally.technicalservices.Color.classificationOnTrack,
-                Rally.technicalservices.Color.classificationHighRisk,
-                Rally.technicalservices.Color.classificationModerateRisk,
-                Rally.technicalservices.Color.classificationOther
+                Rally.technicalservices.Color.featureCompleteColor,
+                Rally.technicalservices.Color.featureCompleteIncompleteDodColor,
+                Rally.technicalservices.Color.featureTotalColor
             ],
 
             chart: {
@@ -783,172 +668,127 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                 type: 'pie'
             },
             title: {
-                text: null
+                text: title,
+                //align: 'center',
+                verticalAlign: 'middle',
+                x: -x *.35,
+                y: -y *.65,
+                useHTML: true
             },
             tooltip: {
                 pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b>'
             },
             plotOptions: {
                 pie: {
-                    point: {
-                    events: {
-                        click: function () {
-                            console.log('pointclikc', this)
-                            var data = Ext.create('Rally.technicalservices.DataPopover',{
-                                modelName: this.modelName,
-                                fetch: this.fetch,
-                                title: Ext.String.format("{0} Features ({1} items)", this.name, this.oids.length || 0),
-                                oids: this.oids,
-                                width: Rally.getApp().getWidth(),
-                                maxHeight: Rally.getApp().getHeight()
-                            });
-                            data.show();
-                        }
-                    }
-                    },
-                    dataLabels: {
-                        enabled: true,
-                        distance: -3,
-                        style: {
-                            color: 'black',
-                            fontSize: '10px'
-                        },
-                        format: '{point.name}: {point.y}'
-                    },
-                    center: [x, y],
-                    size: '50%'
-                }
-            }
-        };
-    },
-    _getTeamChartConfig: function() {
-        return  {
-            colors: [
-                Rally.technicalservices.Color.classificationOnTrack,
-                Rally.technicalservices.Color.classificationHighRisk,
-                Rally.technicalservices.Color.classificationModerateRisk,
-                Rally.technicalservices.Color.classificationOther
-            ],
-
-            chart: {
-                type: 'bar'
-            },
-            title: {
-                text: null
-            },
-            tooltip: {
-                formatter: function(){
-                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Number(this.point.y));
-                }
-            },
-            xAxis: {
-                type: 'category',
-                labels: {
-                    formatter: function(){
-                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
-                    }
-                }
-            },
-            yAxis: {
-                title: { text: '# Features'}
-            },
-            plotOptions: {
-                bar: {
                     dataLabels: {
                         enabled: false
-                    }
-                },
-                series: {
-                    stacking: 'normal'
+                    },
+                    center: ['35%', '35%'],
+                    size: '75%'
                 }
-            },
-            legend: {
-                enabled: false
             }
         };
     },
-    _getTeamChartData: function(records){
-        //categories - projects
-        //series = risks
-        var project_hash = {},
-            classifications = _.keys(this.classificationChartColorMapping);
-
-        _.each(records, function(r){
-            var proj = r.get('Project')._refObjectName;
-
-            if (!_.has(project_hash, proj)){
-                project_hash[proj] = {name: proj};
-                _.each(classifications, function(c){
-                    project_hash[proj][c] = 0;
-                });
-            }
-        });
-
-        _.each(records, function(r){
-            var color = r.get('DisplayColor') || 'Other',
-                key = r.get('Project')._refObjectName;
-
-            var classification = this.displayColorClassificationMapping[color] || 'Other';
-            project_hash[key][classification]++;
-        }, this);
-
-        var sorted_projects = _.sortBy(project_hash, function(obj){ return -obj["High Risk"] || 0; });
-
-        var categories = _.pluck(sorted_projects, "name"),
-            data = {},
-            series = [];
-
-        _.each(classifications, function(cl){
-            data[cl] = [];
-            var totals = [];
-            _.each(categories, function(ct){
-                var total = Ext.Array.sum(_.reject(_.values(project_hash[ct]), function(val){ return isNaN(val);}));
-                if (total > 0){
-                    data[cl].push(project_hash[ct][cl]);
-                } else {
-                    data[cl].push(0);
-                }
-
-            });
-            series.push({
-                name: cl,
-                data: data[cl] || [],
-                color: this.classificationChartColorMapping[cl],
-                totals: totals
-            });
-        }, this);
+    _getChartData: function(completedFeatures, completedWithIncompleteDoD, totalFeatures){
+        var data = [{
+            name: 'Delivered',
+            y: completedFeatures - completedWithIncompleteDoD,
+            color: Rally.technicalservices.Color.featureCompleteColor
+        },{
+            name: 'Delivered (Incompleted DoD)',
+            y: completedWithIncompleteDoD,
+            color: Rally.technicalservices.Color.featureCompleteIncompleteDodColor
+        },{
+            name: 'Not Delivered',
+            y: Math.max(totalFeatures - (completedFeatures),0),
+            color: Rally.technicalservices.Color.featureTotalColor
+        }];
 
         return {
-            categories: categories,
-            series: series
-        }
-
+            series: [{
+                name: 'Delivered',
+                data: data,
+                innerSize: '60%'
+            }]
+        };
     },
-    _fetchFeatureColors: function(){
-        var filters = this.timeboxScope.getQueryFilter(),
-            fetch = ['ObjectID','DisplayColor','Project'];
+    _getTitle: function(completed_features, total_features, incomplete_dod_features){
+         if (total_features > 0) {
+            var pct_features_delivered = Number(completed_features / total_features * 100).toFixed(1),
+                pct_incompleted_dod = Number(incomplete_dod_features / total_features * 100).toFixed(1);
+
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>{0}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Delivered</span><br/>' +
+                '<span style="font-size:18px;color:black"><b>{1}%</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">Incomplete DoD</span></div>',
+                pct_features_delivered, pct_incompleted_dod);
+        } else {
+            return Ext.String.format('<div style="text-align:center"><span style="font-size:24px;color:black"><b>N/A</b></span>' +
+                '<br/><span style="font-size:12px;color:silver">No<br/>Features</span><br/></div>');
+        }
+    },
+    _fetchTotalFeatures: function(){
+        var filters = this.timeboxScope.getQueryFilter();
+
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
+    },
+    _fetchFeaturesComplete: function(){
+        var filters = this.timeboxScope.getQueryFilter();
 
         var state_filters = [];
         _.each(this.completedStates, function(s){
             state_filters.push({
                 property: 'State.Name',
-                operator: '!=',
                 value: s
             });
         });
-
-        state_filters = Rally.data.wsapi.Filter.and(state_filters);
+        state_filters = Rally.data.wsapi.Filter.or(state_filters);
         filters = filters.and(state_filters);
 
-        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(this.featureModelName, filters, fetch);
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiCount(this.featureModelName, filters);
     },
-    //Overriding this function because we want to set colors ourselves.
-    _setChartColorsOnSeries: function (series) {
-        return null;
+    _fetchDoneItemsWithIncompleteDoD: function(){
+
+        var filters = [];
+        _.each(this.completedStates, function(s){
+            filters.push({
+                property: 'Feature.State.Name',
+                value: s
+            });
+        });
+        filters = Rally.data.wsapi.Filter.or(filters);
+
+        filters = filters.and(this.timeboxScope.getQueryFilter());
+
+        filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
+            property: 'c_DoDStoryType',
+            operator: '!=',
+            value: ''
+        }));
+
+        filters = filters.and(Ext.create('Rally.data.wsapi.Filter',{
+            property: 'ScheduleState',
+            operator: '!=',
+            value: "Accepted"
+        }));
+
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords('HierarchicalRequirement',filters,['Feature','ObjectID']);
+    },
+    _getFeatureWithIncompleteDoDCount: function(records){
+        var features = [];
+        _.each(records, function(r){
+            if (r.get('Feature')){
+                features = Ext.Array.merge(features, [r.get('Feature').ObjectID]);
+            }
+        });
+        return features.length;
     }
+
+
 });
 
-Ext.define("feature-risk", {
+
+Ext.define("features-delivered", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -959,12 +799,12 @@ Ext.define("feature-risk", {
     defaults: { margin: 10 },
 
     onScopeChange: function(timeboxScope){
-        if (this.down('tsfeatureriskpie')){
-            this.down('tsfeatureriskpie').destroy();
+        if (this.down('tsfeaturesdelivered')){
+            this.down('tsfeaturesdelivered').destroy();
         }
 
         this.add({
-            xtype: 'tsfeatureriskpie',
+            xtype: 'tsfeaturesdelivered',
             timeboxScope: timeboxScope,
             featureModelName: 'PortfolioItem/Feature',
             completedStates: ["Operate","Done"],
@@ -982,16 +822,16 @@ Ext.define("feature-risk", {
             }
         ];
     },
-    
+
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
     },
-    
+
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     },
-    
+
     //onSettingsUpdate:  Override
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
@@ -1001,8 +841,8 @@ Ext.define("feature-risk", {
 });
 
             
-               Rally.launchApp('feature-risk', {
-                   name: 'Feature Risk'
+               Rally.launchApp('features-delivered', {
+                   name: 'Features Delivered'
                });
         });
     </script>
