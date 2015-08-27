@@ -5,7 +5,7 @@ Ext.define('Rally.technicalservices.DataPopover', {
     id: 'grid-popover',
     cls: 'grid-popover',
 
-    width: 750,
+    maxWidth: 400,
     maxHeight: 300,
 
     layout: 'fit',

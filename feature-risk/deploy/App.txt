@@ -3,11 +3,11 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Aug 26 2015 16:11:11 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 14:15:44 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Aug 26 2015 16:11:11 GMT-0700 (PDT)";
-        var CHECKSUM = 14926320988;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 14:15:44 GMT-0700 (PDT)";
+        var CHECKSUM = 22025813769;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -178,12 +178,12 @@ Ext.define('Rally.technicalservices.Color',{
     featureCompleteIncompleteDodColor: '#a6c96a',
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
-    featureDeployedColor: '#80699B',
-    featureNonDeployedColor: '#333333',
+    featureDeployedColor: '#8085e9',
+    featureNonDeployedColor: '#696969',
 
-    featurePlanned: '#90ed7d',
-    featureAdded:'#8085e9',
-    featureDescoped: '#492970',
+    featurePlanned: '#2f7ed8',
+    featureAdded:'#8bbc21',
+    featureDescoped: '#910000',
 
     classificationOnTrack: 'green',
     classificationHighRisk: 'red',
@@ -233,6 +233,141 @@ Ext.define('Rally.technicalservices.Color',{
     ]
 
 
+});
+
+Ext.define('Rally.technicalservices.DataPopover', {
+    alias: 'widget.tsdatapopover',
+    extend: 'Rally.ui.dialog.Dialog',
+
+    id: 'grid-popover',
+    cls: 'grid-popover',
+
+    maxWidth: 400,
+    maxHeight: 300,
+
+    layout: 'fit',
+
+    autoShow: true,
+    componentCls: 'rly-popover dark-container',
+    header: true,
+    preventFocusOnActivate: true,
+    shouldHidePopoverOnBodyClick: false,
+    shouldHidePopoverOnIframeClick: false,
+    autoCenter: false,
+    closable: true,
+    shadow: false,
+
+    /**
+     * @cfg {Ext.Element} target (Required)
+     * The default element that the popover should be aligned to when positioned
+     */
+    target: undefined,
+
+    /**
+     * @cfg {String} targetSelector
+     * The selector for target to protect in the case of the target being removed from the dom i.e. grid refresh
+     */
+    targetSelector: undefined,
+
+    /**
+     * @cfg {String} targetTriggeredCls
+     * The class to add to the target when the popover is being displayed
+     */
+    targetTriggeredCls: undefined,
+
+    /**
+     * @cfg {Ext.Component} owner
+     * The Ext component that owns this popover. This is useful for doing .up() component queries or tying data requests to the original component instead of the popover component
+     */
+    owner: undefined,
+
+    /**
+     * @cfg {String|Array|Function} placement
+     * How to position the popover -  right | left | top | bottom
+     * Can be a string if you only want to allow one position, an array of strings if you want to allow multiple, or a function to determine which ones you want and return the string or array of strings
+     * The popover will use this value as a preference choosing the first placeable value first
+     */
+    placement: undefined,
+
+    /**
+     * @cfg Array offsetFromTarget
+     * Offset (Object) x and y offset positions of popover when on top, right, bottom and left
+     */
+    offsetFromTarget: [
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0}
+    ],
+
+    /**
+     * @cfg Array viewportPadding
+     * Offset (Array) amounts from Viewport edge - top | right | bottom | left
+     * when specified, the popover will be shifted within the viewport (plus any offset)
+     */
+    viewportPadding: [0,0,0,0],
+
+    /**
+     * @cfg Array targetPosition
+     * Position (String) for popover's target when on top, right, bottom and left
+     */
+    targetPosition: ['b-t','l-r','t-b','r-l'],
+
+    /**
+     * @cfg Array chevronPosition
+     * Position (String) for popover's chevron when on top, right, bottom and left
+     */
+    chevronPosition: ['t-b','r-l','b-t','l-r'],
+
+    /**
+     * @cfg Array chevronOffset
+     * Offset (Object) x and y offset positions of chevron when on top, right, bottom and left
+     */
+    chevronOffset: [
+        {x: 0, y: -14},
+        {x: 14, y: 0},
+        {x: 0, y: 14},
+        {x: -8, y: 0}
+    ],
+
+    /**
+     * @cfg Boolean showChevron
+     * Set to false to not show the chevron when displaying the popover
+     */
+    showChevron: true,
+
+    constructor: function(config) {
+        this.title = config.title || '';
+        var filters = [];
+        _.each(config.oids, function(oid){
+            filters.push({
+                property: 'ObjectID',
+                value: oid
+            });
+        });
+        filters= Rally.data.wsapi.Filter.or(filters);
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: config.modelName,
+            fetch: config.fetch,
+            enablePostGet: true,
+            filters: filters,
+            pageSize: Math.max(config.oids.length, 200),
+            limit: config.oids.length
+        });
+        store.load();
+
+        var items = [{
+            xtype: 'rallygrid',
+            columnCfgs: config.fetch,
+            store: store,
+            showPagingToolbar: config.oids.length > 200
+        }];
+
+        config.items = Ext.merge(items, config.items);
+
+        this.callParent(arguments);
+    }
 });
 
 Ext.define('Rally.technicalservices.LookbackToolbox',{
@@ -468,6 +603,28 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
+    _fetchAllowedValues: function(model,field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: model,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        var values = Ext.Array.map(records, function(record) {
+                            return record.get('StringValue');
+                        });
+                        deferred.resolve(values);
+                    }
+                });
+            },
+            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
+        });
+        
+        return deferred;
+
+    }
 });
 
 
@@ -478,7 +635,8 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     config: {
         featureModelName: undefined,
         completedStates: undefined,
-        timeboxScope: undefined
+        timeboxScope: undefined,
+        dataFetch: ["FormattedID","Name","Project","DisplayColor"]
     },
     height: 300,
     border: 0,
@@ -568,20 +726,28 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     _getSummaryChartData: function(records){
 
         var color_data = {},
-            data = [];
+            data = [],
+            oids = {};
 
         _.each(records, function(r){
             var color = r.get('DisplayColor') || 'Other';
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;
+            if (!oids[classification]){
+                oids[classification] = [];
+            }
+            oids[classification].push(r.get('ObjectID'));
         }, this);
 
         _.each(this.classificationChartColorMapping, function(color, classification){
             data.push({
                 name: classification,
                 y: color_data[classification] || 0,
-                color: this.classificationChartColorMapping[classification]
+                oids: oids[classification] || [],
+                color: this.classificationChartColorMapping[classification],
+                modelName: this.featureModelName,
+                fetch: this.dataFetch,
             });
         }, this);
 
@@ -601,7 +767,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
     _getSummaryChartConfig: function(){
         var x = this.width * .35,
             y = this.height * .25 + 25;
-            console.log('x,y', this.width, this.height, x, y);
+
         return  {
             colors: [
                 Rally.technicalservices.Color.classificationOnTrack,
@@ -624,6 +790,22 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             },
             plotOptions: {
                 pie: {
+                    point: {
+                    events: {
+                        click: function () {
+                            console.log('pointclikc', this)
+                            var data = Ext.create('Rally.technicalservices.DataPopover',{
+                                modelName: this.modelName,
+                                fetch: this.fetch,
+                                title: Ext.String.format("{0} Features ({1} items)", this.name, this.oids.length || 0),
+                                oids: this.oids,
+                                width: Rally.getApp().getWidth(),
+                                maxHeight: Rally.getApp().getHeight()
+                            });
+                            data.show();
+                        }
+                    }
+                    },
                     dataLabels: {
                         enabled: true,
                         distance: -3,
