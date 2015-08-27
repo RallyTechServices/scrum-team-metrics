@@ -3,11 +3,11 @@
 <head>
     <title>Feature Summary</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Aug 26 2015 10:21:01 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Aug 26 2015 16:43:17 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Aug 26 2015 10:21:01 GMT-0700 (PDT)";
-        var CHECKSUM = 27067139051;
+        var APP_BUILD_DATE = "Wed Aug 26 2015 16:43:17 GMT-0700 (PDT)";
+        var CHECKSUM = 27598923555;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -178,12 +178,12 @@ Ext.define('Rally.technicalservices.Color',{
     featureCompleteIncompleteDodColor: '#a6c96a',
     featurePushedColor: '#f28f43',
     featureTotalColor: '#2f7ed8',
-    featureDeployedColor: '#80699B',
-    featureNonDeployedColor: '#333333',
+    featureDeployedColor: '#8085e9',
+    featureNonDeployedColor: '#696969',
 
-    featurePlanned: '#90ed7d',
-    featureAdded:'#8085e9',
-    featureDescoped: '#492970',
+    featurePlanned: '#2f7ed8',
+    featureAdded:'#8bbc21',
+    featureDescoped: '#910000',
 
     classificationOnTrack: 'green',
     classificationHighRisk: 'red',
@@ -495,7 +495,7 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             xAxis: {
                 type: 'category',
                 labels: {
-                    rotation: -60,
+                    //rotation: -60,
                     style: {
                         fontSize: '11px',
                         fontFamily: 'Verdana, sans-serif'
@@ -519,15 +519,37 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
             },
             tooltip: {
                 formatter: function () {
-                    return this.x + '<br/>' + this.series.name + ': ' + this.y + '<br/>' +
-                        'Total: ' + this.point.stackTotal;
+                    var total = 0,
+                        x = this.point.x,
+                        descoped = 0,
+                        y = this.y;
+
+                    _.each(this.series.chart.series, function(s){
+                         if (s.name == "Descoped"){
+                            descoped = s.yData[x];
+                        } else {
+                            total += s.yData[x];
+                        }
+                    });
+
+                    if (this.series.name == "Descoped"){
+                        y = -descoped;
+                    }
+
+                    if (this.series.name == "Planned"){
+                        y = y - descoped;
+                    }
+
+                    return this.x + '<br/>' + this.series.name + ': ' + y + '<br/>' +
+                        'Total: ' + total;
                 }
             },
             legend: {
-                //layout: 'vertical',
+                layout: 'vertical',
                 align: 'right',
-                verticalAlign: 'top',
-                floating: true
+                verticalAlign: 'bottom',
+                floating: true,
+                y: -30
             }
         },
         chartData: {
@@ -606,23 +628,23 @@ Ext.define('Rally.technicalservices.chart.FeatureSummaryByTeam', {
 
         console.log('---',categories, planned_data, descoped_data,added_data, done_data);
         var series =  [{
-            name: 'Planned',
-            type: 'column',
-            data: planned_data,
-          //  stack: 'total'
-        },{
             name: 'Added',
-            type: 'column',
+            type: 'bar',
             data: added_data,
            // stack: 'total'
         },{
-            name: 'Descoped',
-            type: 'column',
-            data: descoped_data
+            name: 'Planned',
+            type: 'bar',
+            data: planned_data,
+            //  stack: 'total'
         },{
-            name: 'Done',
-            type: 'spline',
-            data: done_data
+            name: 'Descoped',
+            type: 'bar',
+            data: descoped_data
+        //},{
+        //    name: 'Done',
+        //    type: 'spline',
+        //    data: done_data
         }];
 
         return series;
@@ -844,14 +866,15 @@ Ext.define('Rally.technicalservices.chart.FeatureSummary', {
                 }
             },
             legend: {
-                //layout: 'vertical',
+                layout: 'vertical',
                 align: 'right',
                 verticalAlign: 'bottom',
                 floating: true,
-                y: 10
+                y: -30
             },
             tooltip: {
                 formatter: function () {
+
                     return this.series.name + ': ' + this.y + '<br/>' +
                         'Total: ' + this.point.stackTotal;
                 }
@@ -926,7 +949,7 @@ Ext.define("feature-summary", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
-
+    autoScroll: false,
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
@@ -969,7 +992,7 @@ Ext.define("feature-summary", {
 
                         this.down('#display_box').add({
                             xtype: 'rallybutton',
-                            text: 'Team Drilldown',
+                            text: 'Team View',
                             cls: 'secondary rly-small',
                             listeners: {
                                 scope: this,
@@ -988,11 +1011,11 @@ Ext.define("feature-summary", {
 
     },
     _updateView: function(btn){
-        if (btn.text == 'Team Drilldown'){
+        if (btn.text == 'Team View'){
             btn.setText("< Back to Summary");
             this._showTeamView(this.calculator);
         } else {
-            btn.setText("Team Drilldown");
+            btn.setText("Team View");
             this._showSummaryView(this.calculator);
         }
     },

@@ -4,6 +4,7 @@ Ext.define("feature-risk", {
     supportsUnscheduled: false,
 
     componentCls: 'app',
+    autoScroll: false,
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
@@ -16,9 +17,11 @@ Ext.define("feature-risk", {
             xtype: 'tsfeatureriskpie',
             timeboxScope: timeboxScope,
             featureModelName: 'PortfolioItem/Feature',
-            completedStates: ["Operate","Done"]
+            completedStates: ["Operate","Done"],
+            width: this.getWidth() || 300,
+            height: this.getHeight() || 300
         });
-
+        this.logger.log('width, height', this.getWidth(), this.getHeight());
     },
     getOptions: function() {
         return [
