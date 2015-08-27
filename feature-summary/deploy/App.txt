@@ -3,11 +3,11 @@
 <head>
     <title>Feature Summary</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 13:56:50 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 14:20:01 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 13:56:50 GMT-0700 (PDT)";
-        var CHECKSUM = 39682977825;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 14:20:01 GMT-0700 (PDT)";
+        var CHECKSUM = 39816727793;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -361,7 +361,9 @@ Ext.define('Rally.technicalservices.DataPopover', {
             xtype: 'rallygrid',
             columnCfgs: config.fetch,
             store: store,
-            showPagingToolbar: config.oids.length > 200
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
         }];
 
         config.items = Ext.merge(items, config.items);
