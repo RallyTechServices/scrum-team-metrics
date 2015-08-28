@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Arrival/Kill Rate</title>
+    <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Thu Aug 27 2015 14:12:13 GMT-0700 (PDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Aug 27 2015 14:12:13 GMT-0700 (PDT)";
+        var CHECKSUM = 24460615506;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350, 
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        console.log("_checkChecksum", container);
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if (! app.isExternal() ) {
+                
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('Rally.technicalservices.Color',{
+    singleton: true,
+
+    featureCompleteColor: '#8bbc21',
+    featureCompleteIncompleteDodColor: '#a6c96a',
+    featurePushedColor: '#f28f43',
+    featureTotalColor: '#2f7ed8',
+    featureDeployedColor: '#8085e9',
+    featureNonDeployedColor: '#696969',
+
+    featurePlanned: '#2f7ed8',
+    featureAdded:'#8bbc21',
+    featureDescoped: '#910000',
+
+    classificationOnTrack: 'green',
+    classificationHighRisk: 'red',
+    classificationModerateRisk: 'yellow',
+    classificationOther: '#f6f6f6',
+
+    storiesAcceptedCount:  '#145499',
+    storiesTotalCount: '#f6f6f6',
+
+
+    colors: ['#2f7ed8', '#8bbc21', '#910000', '#492970', '#f15c80', '#7cb5ec',
+        '#f28f43', '#90ed7d', '#434348', '#8085e9', '#aa1925',
+        '#145499','#77a1e5', '#c42525', '#f7a35c', '#a6c96a',
+        '#e4d354', '#2b908f', '#f45b5b', '#91e8e1','#1aadce',
+        '#4572A7', '#AA4643', '#89A54E', '#80699B', '#3D96AE',
+        '#DB843D', '#92A8CD', '#A47D7C', '#B5CA92'],
+
+    colorDisplay: [
+        '<span style="color:#2f7ed8">',
+        '<span style="color:#8bbc21">',
+        '<span style="color:#910000">',
+        '<span style="color:#492970">',
+        '<span style="color:#f15c80">',
+        '<span style="color:#f28f43">',
+        '<span style="color:#90ed7d">',
+        '<span style="color:#434348">',
+        '<span style="color:#8085e9">',
+        '<span style="color:#aa1925">',
+        '<span style="color:#145499">',
+        '<span style="color:#77a1e5">',
+        '<span style="color:#c42525">',
+        '<span style="color:#f7a35c">',
+        '<span style="color:#a6c96a">',
+        '<span style="color:#e4d354">',
+        '<span style="color:#f45b5b">',
+        '<span style="color:#91e8e1">',
+        '<span style="color:#1aadce">',
+        '<span style="color:#4572A7">',
+        '<span style="color:#AA4643">',
+        '<span style="color:#89A54E">',
+        '<span style="color:#80699B">',
+        '<span style="color:#3D96AE">',
+        '<span style="color:#DB843D">',
+        '<span style="color:#92A8CD">',
+        '<span style="color:#A47D7C">',
+        '<span style="color:#B5CA92">'
+    ]
+
+
+});
+
+Ext.define('Rally.technicalservices.LookbackToolbox',{
+    singleton: true,
+
+    fetchLookbackSnapshotCount: function(find){
+        var deferred = Ext.create('Deft.Deferred');
+
+        Ext.create('Rally.data.lookback.SnapshotStore',{
+            fetch: ['ObjectID'],
+            find: find,
+            limit: 1,
+            pageSize: 1,
+            removeUnauthorizedSnapshots: true
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(operation.resultSet.totalRecords);
+                } else {
+                    deferred.reject(Ext.String.format("Error running lookback query: {0}",  operation.error.errors.join(',')));
+                }
+            }
+        });
+
+        return deferred;
+    },
+    fetchLookbackRecords: function(find, fetch, hydrate, sort){
+        var deferred = Ext.create('Deft.Deferred');
+
+        fetch = fetch || ['ObjectID'];
+        hydrate = hydrate || [];
+        sort = sort || {_ValidFrom: 1};
+
+        Ext.create('Rally.data.lookback.SnapshotStore',{
+            fetch: fetch,
+            find: find,
+            hydrate: hydrate,
+            limit: Infinity,
+            sort: sort,
+            removeUnauthorizedSnapshots: true
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(Ext.String.format("Error running lookback query: {0}",  operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    },
+    fetchLookbackFieldTransitions: function(find, field, iso_start_date){
+
+        var previous_values_field = "_PreviousValues." + field;
+
+        find["_ValidFrom"] = {$gte: iso_start_date};
+        find[previous_values_field] = {$exists: true};
+        find[previous_values_field] = {$ne: null};
+
+        var fetch = ['ObjectID', field, previous_values_field, "_ValidFrom","_SnapshotNumber"];
+
+        return Rally.technicalservices.LookbackToolbox.fetchLookbackRecords(find,fetch);
+    },
+    fetchLookbackFieldTransitionsCount: function(find, field, iso_start_date){
+        var deferred = Ext.create('Deft.Deferred');
+        Rally.technicalservices.LookbackToolbox.fetchLookbackFieldTransitions(find, field, iso_start_date).then({
+            success: function(snaps){
+                var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(snaps);
+                deferred.resolve(_.keys(snaps_by_oid).length);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    fetchLookbackFieldTransitionIntoCount: function(find, field, iso_start_date, into_value){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var previous_values_field = "_PreviousValues." + field;
+
+        find["_ValidFrom"] = {$gte: iso_start_date};
+        find[previous_values_field] = {$exists: true};
+        if (into_value instanceof Array){
+            find[field] = {$in: into_value};
+        } else {
+            find[field] = into_value;
+
+        }
+        var fetch = ['ObjectID', field, previous_values_field, "_ValidFrom","_SnapshotNumber"];
+
+        Rally.technicalservices.LookbackToolbox.fetchLookbackFieldTransitions(find, field, iso_start_date).then({
+            success: function(snaps){
+                var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(snaps);
+
+                //TODO if into_value is an array,  verify that the previous values is not in that array.
+
+                deferred.resolve(_.keys(snaps_by_oid).length);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    fetchLookbackFieldTransitionOutOfCount: function(find, field, iso_start_date, out_of_value){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var previous_values_field = "_PreviousValues." + field;
+
+        find["_ValidFrom"] = {$gte: iso_start_date};
+        if (out_of_value instanceof Array){
+            find[previous_values_field] = {$in: out_of_value};
+        } else {
+            find[previous_values_field] = out_of_value;
+        }
+
+
+        var fetch = ['ObjectID', field, previous_values_field, "_ValidFrom","_SnapshotNumber"];
+
+        Rally.technicalservices.LookbackToolbox.fetchLookbackFieldTransitions(find, field, iso_start_date).then({
+            success: function(snaps){
+                var snaps_by_oid = Rally.technicalservices.LookbackToolbox.aggregateSnapsByOidForModel(snaps);
+                deferred.resolve(_.keys(snaps_by_oid).length);
+            },
+            failure: function(msg){
+                deferred.reject(msg);
+            }
+        });
+        return deferred.promise;
+    },
+    aggregateSnapsByOidForModel: function(snaps){
+        //Return a hash of objects (key=ObjectID) with all snapshots for the object
+        var snaps_by_oid = {};
+        Ext.each(snaps, function(snap){
+            var oid = snap.ObjectID || snap.get('ObjectID');
+            if (snaps_by_oid[oid] == undefined){
+                snaps_by_oid[oid] = [];
+            }
+            snaps_by_oid[oid].push(snap.getData());
+
+        });
+        return snaps_by_oid;
+    },
+    aggregateSnapsByOid: function(snaps){
+        //Return a hash of objects (key=ObjectID) with all snapshots for the object
+        var snaps_by_oid = {};
+        Ext.each(snaps, function(snap){
+            var oid = snap.ObjectID;
+            if (snaps_by_oid[oid] == undefined){
+                snaps_by_oid[oid] = [];
+            }
+            snaps_by_oid[oid].push(snap);
+        });
+        return snaps_by_oid;
+    }
+});
+
+
+Ext.define('Rally.technicalservices.WsapiToolbox',{
+    singleton: true,
+    fetchWsapiCount: function(model, query_filters){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: model,
+            fetch: ['ObjectID'],
+            filters: query_filters,
+            limit: 1,
+            pageSize: 1
+        }).load({
+            callback: function(records, operation, success){
+                if (success){
+                    deferred.resolve(operation.resultSet.totalRecords);
+                } else {
+                    deferred.reject(Ext.String.format("Error getting {0} count for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    },
+    fetchWsapiRecords: function(model, query_filters, fetch_fields){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: model,
+            fetch: fetch_fields,
+            filters: query_filters,
+            limit: Infinity
+        }).load({
+            callback: function(records, operation, success){
+               if (success){
+                    deferred.resolve(records);
+                } else {
+                    deferred.reject(Ext.String.format("Error getting {0} for {1}: {2}", model, query_filters.toString(), operation.error.errors.join(',')));
+                }
+            }
+        });
+        return deferred;
+    },
+    fetchReleases: function(timebox){
+
+        var deferred = Ext.create('Deft.Deferred'),
+            rec = timebox.getRecord(),
+            me = this;
+
+        if (rec == null) {
+            deferred.resolve([]);
+        }
+
+        Ext.create('Rally.data.wsapi.Store',{
+            model: 'Release',
+            fetch: ['ObjectID'],
+            filters: [{
+                property: 'Name',
+                value: rec.get('Name')
+            },{
+                property: 'ReleaseStartDate',
+                value: rec.get('ReleaseStartDate')
+            },{
+                property: 'ReleaseDate',
+                value: rec.get('ReleaseDate')
+            }],
+            limit: Infinity
+        }).load({
+            callback: function(records, operation, success){
+                 if (success){
+                    deferred.resolve(records);
+                }   else {
+                    deferred.reject("Error loading Releases: " + operation.error.errors.join(','));
+                }
+            }
+        });
+        return deferred;
+    },
+    
+    _fetchAllowedValues: function(model,field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: model,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        var values = Ext.Array.map(records, function(record) {
+                            return record.get('StringValue');
+                        });
+                        deferred.resolve(values);
+                    }
+                });
+            },
+            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
+        });
+        
+        return deferred;
+
+    }
+});
+
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+    title: "Build Information",
+    
+    defaults: { padding: 5, margin: 5 },
+
+    closable: true,
+     
+    draggable: true,
+
+    autoShow: true,
+   
+    width: 350, 
+    
+    initComponent: function() {
+        var id = Ext.id(this);
+        this.title =  "<span class='icon-help'> </span>" + this.title;
+        this.callParent(arguments);
+    },
+    
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+    
+        return chk;
+    },
+    
+    _checkChecksum: function(container) {
+        var deferred = Ext.create('Deft.Deferred');
+        console.log("_checkChecksum", container);
+        var me = this;
+        
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        console.log("Checksums don't match!");
+                        deferred.resolve(false);
+                        return;
+                    }
+                }
+                deferred.resolve(true);
+            }
+        });
+        
+        return deferred.promise;
+    },
+    
+    afterRender: function() {
+        var app = Rally.getApp();
+        
+        if (! app.isExternal() ) {
+                
+            this._checkChecksum(app).then({
+                scope: this,
+                success: function(result){
+                    if ( !result ) {
+                        this.addDocked({
+                            xtype:'container',
+                            cls: 'build-info',
+                            padding: 2,
+                            html:'<span class="icon-warning"> </span>Checksums do not match'
+                        });
+                    }
+                },
+                failure: function(msg){
+                    console.log("oops:",msg);
+                }
+            });
+        } else {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'... Running externally'
+            });
+        }
+        this.callParent(arguments);
+    },
+    
+    beforeRender: function() {
+        var me = this;
+        this.callParent(arguments);
+
+        if (this.informationHtml) {
+            this.addDocked({
+                xtype: 'component',
+                componentCls: 'intro-panel',
+                padding: 2,
+                html: this.informationHtml
+            });
+        }
+        
+        this.addDocked({
+            xtype:'container',
+            cls: 'build-info',
+            padding: 2,
+            html:"This app was created by the Rally Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            this.addDocked({
+                xtype:'container',
+                cls: 'build-info',
+                padding: 2,
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+ Ext.define("Rally.TechnicalServices.calculator.DefectArrivalKillCalculator", {
+     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+
+     config: {
+        closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
+        productionDefects: [],
+        allDefects: [],
+        showOnlyProduction: false
+     },
+     
+    getDerivedFieldsOnInput: function () {
+        var me = this;
+        var killed_states = this.config.closedStateNames;
+        var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+            return d.get('ObjectID')
+        });
+        
+        if ( me.config.showOnlyProduction) {
+            return [
+                
+                {
+                    'as': 'CreatedAfterStartFromProduction',
+                    'f' : function(snapshot) {
+                        return (
+                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+                        );
+                    }
+                },
+                {
+                    'as': 'KilledFromProduction',
+                    'f' : function(snapshot) {
+                        return (
+                            Ext.Array.contains(killed_states,snapshot.State)
+                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                        );
+                    }
+                }
+            ];
+        } else {
+            return [
+                {
+                    'as': 'CreatedAfterStart',
+                    'f' : function(snapshot) {
+                        return ( 
+                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                        );
+                    }
+                },
+                {
+                    'as': 'Killed',
+                    'f' : function(snapshot) {
+                        return ( 
+                            Ext.Array.contains(killed_states,snapshot.State)
+                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                        );
+                    }
+                }];
+        }
+    },
+     
+    getMetrics: function () {
+        var me = this;
+        if ( me.config.showOnlyProduction) {
+            return [
+                {
+                    "filterField": "CreatedAfterStartFromProduction",
+                    'as':'Arrived (Production)',
+                    'f':'filteredCount',
+                    'filterValues':[true]
+                },
+                {
+                    'filterField': "KilledFromProduction",
+                    'as':'Killed (Production)',
+                    'f':'filteredCount',
+                    'filterValues':[true]
+                }
+            ];
+        } else {
+            return [
+                {
+                    "filterField": "CreatedAfterStart",
+                    'as':'Arrived',
+                    'f':'filteredCount',
+                    'filterValues':[true]
+                },
+                {
+                    "filterField": "Killed",
+                    'as':'Killed',
+                    'f':'filteredCount',
+                    'filterValues':[true]
+                }
+            ];
+        }
+    },
+
+    runCalculation: function (snapshots) {
+        var chartData = this.callParent(arguments);
+        var today = Rally.util.DateTime.add(new Date(),"day",1); //include today
+        Ext.Array.each(chartData.series,function(series,idx){
+            this._removeFutureSeries(chartData, idx, this._indexOfDate(chartData,today,true));
+        },this);
+
+        return chartData;
+    },
+
+    _indexOfDate: function(chartData, date, find_next_day_if_missing ) {
+         var dateStr = Ext.Date.format(date, 'Y-m-d');
+         var categories = chartData.categories;
+         
+         var idx = Ext.Array.indexOf(categories,dateStr);
+         if ( idx > -1 ) {
+            return idx;
+         }
+         if ( find_next_day_if_missing ) {
+            var test_idx = categories.length - 1;
+            while ( test_idx > -1 ) {
+                if (categories[test_idx] > dateStr ) {
+                    break;
+                }
+                test_idx = test_idx - 1;
+            }
+            return test_idx;
+         }
+         return -1;
+    },
+    
+    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
+        
+        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
+            var idx = cutOffIndex;
+            
+            while(idx < chartData.series[seriesIndex].data.length) {
+                chartData.series[seriesIndex].data[idx] = null;
+                idx++;
+            }
+        }
+    }
+    
+ });
+Ext.define('Rally.technicalservices.chart.ArrivalKill', {
+    extend: 'Ext.panel.Panel', 
+    alias: 'widget.tsarrivalkillchart',
+    logger: new Rally.technicalservices.Logger(),
+
+    config: {
+        /**
+         * @cfg {Rally.app.TimeboxScope}  (required)
+         * The timebox that will provide the beginning and end dates to search creation dates for
+         */
+        timeboxScope: undefined,
+        /**
+         * @cfg {Rally.app.Context}  (required)
+         * The app context (current project, etc)
+         */
+        context: undefined,
+        
+        /**
+         * @cfg {Boolean} 
+         * Show only production defects (defects associated with an incident)
+         */
+        showOnlyProduction: false
+        
+    },
+    height: 300,
+    border: 0,
+
+    fieldValues: [],
+    
+    constructor: function(config) {
+        this.mergeConfig(config);
+        
+        this.callParent([this.config]);
+        
+        if ( Ext.isEmpty(this.timeboxScope) ) {
+            throw "(" + this.xtype + ") Missing required attribute: timeboxScope";
+        }
+        
+        if ( this.timeboxScope.type != 'release' ) {
+            throw "(" + this.xtype + ") Timebox scope must be of type 'release'";
+        }
+        
+        if ( Ext.isEmpty(this.context) ) {
+            throw "(" + this.xtype + ") Missing required attribute: context";
+        }
+                
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+        var me = this;
+        
+        this.setLoading("Getting valid states...",true);
+        Rally.technicalservices.WsapiToolbox._fetchAllowedValues('Defect','State').then({
+            scope: this,
+            success: function(states){
+                this.fieldValues = states;
+                this.updateChart();
+            },
+            failure: function(msg) {
+                Ext.Msg.alert("Problem with " + this.xtype, msg);
+            }
+        });
+        
+        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
+            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
+            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
+        }
+        
+    },
+    
+    // assumes already have defect states saved
+    updateChart: function() {
+        var me = this;
+        
+        if ( this.showOnlyProduction ) {
+            this.setLoading("Getting defects...");
+            Deft.Chain.pipeline([
+                this._getDefectsInTimebox,
+                this._separateIntoDiscoveryLocations
+            ],this).then({
+                scope: this,
+                success: function(results){
+                    this._makeChart(results);
+                },
+                failure: function(msg) {
+                    Ext.Msg.alert("Problem with " + this.xtype, msg);
+                }
+            }).always(function() { 
+                me.setLoading(false); 
+            });
+        } else {
+            this._makeChart({qa:[],production:[]});
+        }
+        
+    },
+    
+    /*
+     * returns a promise
+     */
+    _getDefectsInTimebox: function() {
+        var model = "Defect";
+        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State'];
+        
+        var severity_filters = Rally.data.wsapi.Filter.or([
+            { property: 'Severity', value: 'Minor Problem' },
+            { property: 'Severity', value: 'Major Problem' },
+            { property: 'Severity', value: 'Crash/Data Loss' }
+        ]);
+        
+        var filters = severity_filters;
+        
+        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
+            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
+            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
+        
+            var date_filters = Rally.data.wsapi.Filter.and([
+                { property:'CreationDate', operator: '>=', value: this.startDate },
+                { property:'CreationDate', operator: '<=', value: this.endDate }
+            ]);
+        
+            filters = date_filters.and(severity_filters);
+        }
+        return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(model, filters, fetch);
+    },
+    
+    _separateIntoDiscoveryLocations: function(records) {
+        var locations = { production: [], qa: [] };
+        
+        Ext.Array.each(records, function(record){
+            if (this._hasIncident(record)) {
+                locations.production.push(record);
+            } else {
+                locations.qa.push(record);
+            }
+        },this);
+        
+        return locations;
+    },
+    
+    _isCID: function(defect) {
+        var tags = Ext.Array.pluck( defect.get('Tags')._tagsNameArray, 'Name' );
+        return Ext.Array.contains(tags,'CID');
+    },
+    
+    _hasIncident: function(defect) {
+        var cases_link = defect.get('c_IncidentCases');
+        return ( !Ext.isEmpty(cases_link.LinkID) );
+    },
+    
+    _makeChart: function(defects_by_location){
+        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
+        var me = this;
+       
+        this.logger.log("adding chart", defects_by_location);
+        
+        this.add({
+            xtype:'rallychart',
+            height: this.height - 15,
+            //loadMask: false,
+            storeType: 'Rally.data.lookback.SnapshotStore',
+            storeConfig: {
+                find: {
+                    
+                    CreationDate: {
+                        '$gte': Rally.util.DateTime.toIsoString(this.startDate),
+                        '$lte': Rally.util.DateTime.toIsoString(this.endDate)
+                    },
+                    _TypeHierarchy: 'Defect',
+                    _ProjectHierarchy: this.context.getProject().ObjectID
+                },
+                compress: true,
+                fetch: ['State','Release','CreationDate'],
+                hydrate: ['State']
+            },
+            calculatorType: 'Rally.TechnicalServices.calculator.DefectArrivalKillCalculator',
+            calculatorConfig: {
+                productionDefects: defects_by_location.production,
+                allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
+                showOnlyProduction: me.showOnlyProduction,
+                startDate: me.startDate,
+                endDate: me.endDate,
+                granularity: 'day',
+                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+            },
+            sort: {
+                "_ValidFrom": 1
+            },
+            chartColors: Rally.technicalservices.Color.colors,
+            chartConfig: this._getChartConfig()
+        });
+    },
+    
+    _getChartConfig: function() {
+        return  {
+            chart: {},
+            title: {
+                text: null
+            },
+            xAxis: {
+                tickmarkPlacement: 'on',
+                tickInterval: 14,
+                labels: { rotation: -65, align: 'right' }
+
+            },
+            tooltip: {
+                formatter: function(){
+                    return Ext.String.format('{0}: <b>{1}</b>',this.series.name, this.y);
+                }
+            },
+            yAxis: {
+                title: { 
+                    text: null
+                },
+                min: 0
+            },
+            plotOptions: {
+                'line': {
+                    marker: { enabled: false }
+                }
+            }
+        };
+    }
+});
+
+Ext.define("TSArrivalKill", {
+    extend: 'Rally.app.TimeboxScopedApp',
+    scopeType: 'release',
+    supportsUnscheduled: false,
+    
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+    config: {
+        defaultSettings: {
+            showOnlyProduction:  false
+        }
+    },
+
+    onScopeChange: function(timeboxScope){
+        if (this.down('tsarrivalkillchart')){
+            this.down('tsarrivalkillchart').destroy();
+        }
+
+        this.add({
+            xtype: 'tsarrivalkillchart',
+            timeboxScope: timeboxScope,
+            context: this.getContext(),
+            showOnlyProduction: this.showOnlyProduction
+        });
+
+    },
+    
+    getSettingsFields: function() {
+        return [
+            {
+                name: 'showOnlyProduction',
+                xtype: 'rallycheckboxfield',
+                boxLabelAlign: 'after',
+                fieldLabel: '',
+                margin: '0 0 25 200',
+                boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
+            }
+        ];
+    },
+    
+    getOptions: function() {
+        return [
+            {
+                text: 'About...',
+                handler: this._launchInfo,
+                scope: this
+            }
+        ];
+    },
+    
+    _launchInfo: function() {
+        if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+    },
+    
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    },
+    
+    //onSettingsUpdate:  Override
+    onSettingsUpdate: function (settings){
+        this.logger.log('onSettingsUpdate',settings);
+        Ext.apply(this, settings);
+        this.launch();
+    }
+});
+
+            
+               Rally.launchApp('TSArrivalKill', {
+                   name: 'Arrival/Kill Rate'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
