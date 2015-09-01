@@ -36,8 +36,6 @@ The percent of leaf user stories associated with the total Feature dataset that 
 Feature risk as determined by the color of the feature.  Features colored Green are considered On Track, features colored Yellow are considered moderate risk and features colored Pink or Orange are considered High Risk.  All other feature colors (or lack of color) are ignored and represented by "Other".  Feature Risk is shown only for feature items that are not in the "Done" State.
 The number of features represented in the Feature Risk pie should equal the Total number of features minus the delivered features.
 
-#####Feature Burnup
-Cumulative view of the total features and completed features for each day during the release period.   
 
 #####Features Pushed into Target Sprint
 Number of features pushed out of the target sprint.  Target Sprint is a custom field on the feature that is used to plan for the feature time frame.

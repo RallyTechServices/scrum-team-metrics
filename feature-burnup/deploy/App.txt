@@ -3,11 +3,11 @@
 <head>
     <title>Feature Burnup</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 13:48:53 GMT-0700 (PDT) -->
+    <!--  Build Date: Mon Aug 31 2015 21:12:49 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 13:48:53 GMT-0700 (PDT)";
-        var CHECKSUM = 21469489632;
+        var APP_BUILD_DATE = "Mon Aug 31 2015 21:12:49 GMT-0600 (MDT)";
+        var CHECKSUM = 22983306645;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -242,7 +242,7 @@ Ext.define('Rally.technicalservices.DataPopover', {
     id: 'grid-popover',
     cls: 'grid-popover',
 
-    width: 750,
+    maxWidth: 400,
     maxHeight: 300,
 
     layout: 'fit',
@@ -361,7 +361,9 @@ Ext.define('Rally.technicalservices.DataPopover', {
             xtype: 'rallygrid',
             columnCfgs: config.fetch,
             store: store,
-            showPagingToolbar: config.oids.length > 200
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
         }];
 
         config.items = Ext.merge(items, config.items);
@@ -603,6 +605,28 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
+    _fetchAllowedValues: function(model,field_name) {
+        var deferred = Ext.create('Deft.Deferred');
+
+        Rally.data.ModelFactory.getModel({
+            type: model,
+            success: function(model) {
+                model.getField(field_name).getAllowedValueStore().load({
+                    callback: function(records, operation, success) {
+                        var values = Ext.Array.map(records, function(record) {
+                            return record.get('StringValue');
+                        });
+                        deferred.resolve(values);
+                    }
+                });
+            },
+            failure: function(msg) { deferred.reject('Error loading field values: ' + msg); }
+        });
+        
+        return deferred;
+
+    }
 });
 
 Ext.define('Rally.technicalservices.calculator.FeatureBurnup',{
@@ -850,7 +874,13 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         this._renderChart();
     },
     _setSubtitle: function(avgCycleTime){
-        this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+        var cycle_time = "N/A";
+        if (!isNaN(avgCycleTime)){
+            this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+        } else {
+            this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:14px;color:black;">Average Cycle Time:  N/A (0 Features Delivered)</span></div>')};
+        }
+
 
     },
 
