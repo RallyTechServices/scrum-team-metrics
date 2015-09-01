@@ -164,7 +164,6 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                     point: {
                     events: {
                         click: function () {
-                            console.log('pointclikc', this)
                             var data = Ext.create('Rally.technicalservices.DataPopover',{
                                 modelName: this.modelName,
                                 fetch: this.fetch,

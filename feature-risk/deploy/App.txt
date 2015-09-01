@@ -3,11 +3,11 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:15:44 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Aug 27 2015 14:18:45 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:15:44 GMT-0700 (PDT)";
-        var CHECKSUM = 22025813769;
+        var APP_BUILD_DATE = "Thu Aug 27 2015 14:18:45 GMT-0700 (PDT)";
+        var CHECKSUM = 22064949718;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -361,7 +361,9 @@ Ext.define('Rally.technicalservices.DataPopover', {
             xtype: 'rallygrid',
             columnCfgs: config.fetch,
             store: store,
-            showPagingToolbar: config.oids.length > 200
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
         }];
 
         config.items = Ext.merge(items, config.items);
@@ -793,7 +795,6 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
                     point: {
                     events: {
                         click: function () {
-                            console.log('pointclikc', this)
                             var data = Ext.create('Rally.technicalservices.DataPopover',{
                                 modelName: this.modelName,
                                 fetch: this.fetch,

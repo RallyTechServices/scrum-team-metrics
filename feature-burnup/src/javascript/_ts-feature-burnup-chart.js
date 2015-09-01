@@ -138,7 +138,13 @@ Ext.define('Rally.technicalservices.chart.FeatureBurnup', {
         this._renderChart();
     },
     _setSubtitle: function(avgCycleTime){
-        this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+        var cycle_time = "N/A";
+        if (!isNaN(avgCycleTime)){
+            this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:20px;color:black;"><b>Average Cycle Time: {0} days</b></span></div>',avgCycleTime.toFixed(1))};
+        } else {
+            this.chartConfig.title = { text:  Ext.String.format('<div style="text-align:center"><span style="font-size:14px;color:black;">Average Cycle Time:  N/A (0 Features Delivered)</span></div>')};
+        }
+
 
     },
 
