@@ -1,13 +1,14 @@
 
-Ext.define('Rally.technicalservices.chart.StoryStatePie', {
+Ext.define('Rally.technicalservices.chart.DropdownFieldPie', {
     extend: 'Ext.panel.Panel', //'Rally.ui.chart.Chart',
-    alias: 'widget.tspie',
+    alias: 'widget.tsdropdownpie',
 
     config: {
         timeboxScope: undefined,
         dataFetch: ["FormattedID","Name"],
-        pieField: "ScheduleState",
-        modelName: 'HierarchicalRequirement'
+        pieField: undefined,
+        modelName: undefined,
+        artifactDisplayName: undefined
     },
     height: 300,
     border: 0,
@@ -47,10 +48,10 @@ Ext.define('Rally.technicalservices.chart.StoryStatePie', {
 
     _getSummaryChartData: function(records){
 
-       var data = Rally.technicalservices.MungingToolbox.getPieSeriesData(records, this.pieField);
+        var data = Rally.technicalservices.MungingToolbox.getPieSeriesData(records, this.pieField);
         return {
             series: [{
-                name: 'Story States',
+                name: this.artifactDisplayName,
                 data: data,
                 size: '80%',
                 dataLabels: {
@@ -76,7 +77,7 @@ Ext.define('Rally.technicalservices.chart.StoryStatePie', {
                 text: null
             },
             tooltip: {
-                pointFormat: '{point.y} User Stories <b>{point.percentage:.1f}%</b>'
+                pointFormat: '{point.y} ' + this.artifactDisplayName + ' <b>{point.percentage:.1f}%</b>'
             },
             plotOptions: {
                 pie: {

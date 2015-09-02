@@ -1,4 +1,4 @@
-Ext.define("story-states", {
+Ext.define("state-pie", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -8,22 +8,31 @@ Ext.define("story-states", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
-    componentName: 'tspie',
-    componentConfig: {
-
+    config: {
+        defaultSettings: {
+            modelName: 'HierarchicalRequirement',
+            dropdownField: 'ScheduleState',
+            artifactDisplayName: 'User Stories'
+        }
     },
+
+    componentName: 'tsdropdownpie',
+
 
     onScopeChange: function(timeboxScope){
         if (this.down(this.componentName)){
             this.down(this.componentName).destroy();
         }
-
-        var cmp_cfg = Ext.Object.merge(this.componentConfig,{
+        this.logger.log('onScopeChange', this.getSetting('modelName'), this.getSetting('dropdownField'));
+        var cmp_cfg = {
             xtype: this.componentName,
             timeboxScope: timeboxScope,
             width: this.getWidth() || 300,
-            height: this.getHeight() || 300
-        });
+            height: this.getHeight() || 300,
+            pieField: this.getSetting('dropdownField'),
+            modelName: this.getSetting('modelName'),
+            artifactDisplayName: this.getSetting('artifactDisplayName')
+        };
 
         this.add(cmp_cfg);
     },

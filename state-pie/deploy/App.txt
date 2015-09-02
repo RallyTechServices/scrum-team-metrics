@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Story States</title>
+    <title>Artifact State Pie Chart</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 02 2015 10:21:51 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Sep 02 2015 15:38:05 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 02 2015 10:21:51 GMT-0600 (MDT)";
-        var CHECKSUM = 15017970650;
+        var APP_BUILD_DATE = "Wed Sep 02 2015 15:38:05 GMT-0600 (MDT)";
+        var CHECKSUM = 15650246839;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -665,7 +665,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
     }
 });
 
-Ext.define("story-states", {
+Ext.define("state-pie", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -675,22 +675,31 @@ Ext.define("story-states", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
-    componentName: 'tspie',
-    componentConfig: {
-
+    config: {
+        defaultSettings: {
+            modelName: 'HierarchicalRequirement',
+            dropdownField: 'ScheduleState',
+            artifactDisplayName: 'User Stories'
+        }
     },
+
+    componentName: 'tsdropdownpie',
+
 
     onScopeChange: function(timeboxScope){
         if (this.down(this.componentName)){
             this.down(this.componentName).destroy();
         }
-
-        var cmp_cfg = Ext.Object.merge(this.componentConfig,{
+        this.logger.log('onScopeChange', this.getSetting('modelName'), this.getSetting('dropdownField'));
+        var cmp_cfg = {
             xtype: this.componentName,
             timeboxScope: timeboxScope,
             width: this.getWidth() || 300,
-            height: this.getHeight() || 300
-        });
+            height: this.getHeight() || 300,
+            pieField: this.getSetting('dropdownField'),
+            modelName: this.getSetting('modelName'),
+            artifactDisplayName: this.getSetting('artifactDisplayName')
+        };
 
         this.add(cmp_cfg);
     },
@@ -722,15 +731,16 @@ Ext.define("story-states", {
 });
 
 
-Ext.define('Rally.technicalservices.chart.StoryStatePie', {
+Ext.define('Rally.technicalservices.chart.DropdownFieldPie', {
     extend: 'Ext.panel.Panel', //'Rally.ui.chart.Chart',
-    alias: 'widget.tspie',
+    alias: 'widget.tsdropdownpie',
 
     config: {
         timeboxScope: undefined,
         dataFetch: ["FormattedID","Name"],
-        pieField: "ScheduleState",
-        modelName: 'HierarchicalRequirement'
+        pieField: undefined,
+        modelName: undefined,
+        artifactDisplayName: undefined
     },
     height: 300,
     border: 0,
@@ -770,10 +780,10 @@ Ext.define('Rally.technicalservices.chart.StoryStatePie', {
 
     _getSummaryChartData: function(records){
 
-       var data = Rally.technicalservices.MungingToolbox.getPieSeriesData(records, this.pieField);
+        var data = Rally.technicalservices.MungingToolbox.getPieSeriesData(records, this.pieField);
         return {
             series: [{
-                name: 'Story States',
+                name: this.artifactDisplayName,
                 data: data,
                 size: '80%',
                 dataLabels: {
@@ -799,7 +809,7 @@ Ext.define('Rally.technicalservices.chart.StoryStatePie', {
                 text: null
             },
             tooltip: {
-                pointFormat: '{point.y} User Stories <b>{point.percentage:.1f}%</b>'
+                pointFormat: '{point.y} ' + this.artifactDisplayName + ' <b>{point.percentage:.1f}%</b>'
             },
             plotOptions: {
                 pie: {
@@ -834,8 +844,8 @@ Ext.define('Rally.technicalservices.chart.StoryStatePie', {
 
 
             
-               Rally.launchApp('story-states', {
-                   name: 'Story States'
+               Rally.launchApp('state-pie', {
+                   name: 'Artifact State Pie Chart'
                });
         });
     </script>
