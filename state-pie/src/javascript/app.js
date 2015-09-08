@@ -15,15 +15,14 @@ Ext.define("state-pie", {
             artifactDisplayName: 'User Stories'
         }
     },
-
     componentName: 'tsdropdownpie',
-
 
     onScopeChange: function(timeboxScope){
         if (this.down(this.componentName)){
             this.down(this.componentName).destroy();
         }
         this.logger.log('onScopeChange', this.getSetting('modelName'), this.getSetting('dropdownField'));
+
         var cmp_cfg = {
             xtype: this.componentName,
             timeboxScope: timeboxScope,
@@ -48,7 +47,10 @@ Ext.define("state-pie", {
 
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
-        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/state-pie/README.md",
+            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/state-pie"
+        });
     },
 
     isExternal: function(){

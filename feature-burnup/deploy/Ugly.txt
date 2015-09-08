@@ -3,10 +3,10 @@
 <head>
     <title>Feature Burnup</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Aug 31 2015 21:12:49 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Sep 08 2015 08:16:19 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Aug 31 2015 21:12:49 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Sep 08 2015 08:16:19 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     

@@ -3,11 +3,11 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:18:45 GMT-0700 (PDT) -->
+    <!--  Build Date: Tue Sep 08 2015 08:32:20 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:18:45 GMT-0700 (PDT)";
-        var CHECKSUM = 22064949718;
+        var APP_BUILD_DATE = "Tue Sep 08 2015 08:32:20 GMT-0600 (MDT)";
+        var CHECKSUM = 24366663310;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -29,7 +29,9 @@ Ext.define('Rally.technicalservices.InfoLink',{
      * to add a description of the app's use or functionality)
      */
     informationHtml: null,
-    
+    readmeUrl: null,
+    codeUrl: null,
+
     /**
      * 
      * cfg {String} title
@@ -118,27 +120,44 @@ Ext.define('Rally.technicalservices.InfoLink',{
         }
         this.callParent(arguments);
     },
-    
+
+    _getInformationalHtml: function(){
+        var html = '';
+
+        if (this.informationHtml){
+            html += this.informationHtml + '<br/><br/>';
+        }
+
+        if (this.readmeUrl){
+            html += Ext.String.format("For details about the data in this app, please refer to the <a href=\"{0}\" target=\"_blank\">README file</a>.<br/><br/>", this.readmeUrl);
+        }
+
+        if (this.codeUrl){
+            html += Ext.String.format("Get the code <a href=\"{0}\" target=\"_blank\">here.</a><br/><br/>", this.codeUrl);
+        }
+        return html;
+    },
     beforeRender: function() {
-        var me = this;
+        var me = this,
+            informational_html = this._getInformationalHtml();
         this.callParent(arguments);
 
-        if (this.informationHtml) {
+        if (informational_html && informational_html.length > 0) {
             this.addDocked({
                 xtype: 'component',
                 componentCls: 'intro-panel',
                 padding: 2,
-                html: this.informationHtml
+                html: informational_html
             });
         }
-        
+
         this.addDocked({
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
+            html:"This app was created by the Rally Technical Services Team."
         });
-        
+
         if ( APP_BUILD_DATE ) {
             this.addDocked({
                 xtype:'container',
@@ -192,6 +211,8 @@ Ext.define('Rally.technicalservices.Color',{
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
+    storiesCommitted: '#8bbc21',
+    storiesNonCommitted: '#f28f43',
 
 
     colors: ['#2f7ed8', '#8bbc21', '#910000', '#492970', '#f15c80', '#7cb5ec',
@@ -233,6 +254,40 @@ Ext.define('Rally.technicalservices.Color',{
     ]
 
 
+});
+
+Ext.define('Rally.technicalservices.MungingToolbox', {
+    singleton: true,
+    getPieSeriesData: function(records, pie_field){
+        var pie_hash = Rally.technicalservices.MungingToolbox.getCountByField(records, pie_field),
+            data = [];
+
+        var keys = _.keys(pie_hash);
+        keys = Ext.Array.sort(keys);
+
+        _.each(keys, function(key){
+            data.push({
+                name: key,
+                y: pie_hash[key] || 0
+            });
+        });
+        return data;
+
+    },
+    getCountByField: function(records, field){
+        var hash = {};
+
+        _.each(records, function(r){
+            var val = r.get(field);
+            if (val){
+                if (hash[val] == undefined){
+                    hash[val] = 0;
+                }
+                hash[val] ++;
+            }
+        });
+        return hash;
+    }
 });
 
 Ext.define('Rally.technicalservices.DataPopover', {
@@ -986,7 +1041,10 @@ Ext.define("feature-risk", {
     
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
-        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/feature-risk/README.md",
+            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/feature-risk"
+        });
     },
     
     isExternal: function(){
