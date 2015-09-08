@@ -15,86 +15,86 @@
             return d.get('ObjectID')
         });
         
+        var derived_fields = [];
         if ( me.config.showOnlyProduction) {
-            return [
-                
-                {
-                    'as': 'CreatedAfterStartFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                        );
-                    }
-                },
-                {
-                    'as': 'ResolvedFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                }
-            ];
-        } else {
-            return [
+            Ext.Array.push(derived_fields, [
                 {
                     'as': 'CreatedAfterStart',
                     'f' : function(snapshot) {
-                        return ( 
+                        return (
                             snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
                         );
                     }
                 },
                 {
                     'as': 'Resolved',
                     'f' : function(snapshot) {
-                        return ( 
+                        return (
                             Ext.Array.contains(killed_states,snapshot.State)
+                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
                             && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
                         );
                     }
-                }];
+                }
+            ]);
+        } else {
+            Ext.Array.push(derived_fields, [
+                {
+                    'as': 'CreatedAfterStart',
+                    'f' : function(snapshot) {
+                        if (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)) { 
+                            return 1;
+                        }
+                        return 0;
+                    }
+                },
+                {
+                    'as': 'Resolved',
+                    'f' : function(snapshot) {
+                        if ( 
+                            Ext.Array.contains(killed_states,snapshot.State)
+                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                        ) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                }
+            ]);
         }
+        
+        derived_fields.push({
+            'as': 'Trend',
+            'f' : function(snapshot) {
+                return snapshot.CreatedAfterStart - snapshot.Resolved;
+            }
+        });
+        
+        return derived_fields;
     },
      
     getMetrics: function () {
         var me = this;
-        if ( me.config.showOnlyProduction) {
-            return [
-                {
-                    "filterField": "CreatedAfterStartFromProduction",
-                    'as':'Created (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    'filterField': "ResolvedFromProduction",
-                    'as':'Resolved (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        } else {
-            return [
-                {
-                    "filterField": "CreatedAfterStart",
-                    'as':'Created',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    "filterField": "Resolved",
-                    'as':'Resolved',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        }
+        return [
+            {
+                "field": "CreatedAfterStart",
+                'as':'Created',
+                'f':'sum'
+            },
+            {
+                'field': "Resolved",
+                'as':'Resolved',
+                'f':'sum'
+            },
+            {
+                'field':'Trend',
+                'as':'Trend (Created - Resolved)',
+                'f':'sum'
+            }
+        ];
     },
-
+    
     runCalculation: function (snapshots) {
         var chartData = this.callParent(arguments);
         var today = Rally.util.DateTime.add(new Date(),"day",1); //include today
