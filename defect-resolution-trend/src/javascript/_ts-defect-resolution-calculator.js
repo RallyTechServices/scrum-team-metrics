@@ -1,4 +1,4 @@
- Ext.define("Rally.TechnicalServices.calculator.DefectArrivalKillCalculator", {
+ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator", {
      extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
 
      config: {
@@ -28,7 +28,7 @@
                     }
                 },
                 {
-                    'as': 'KilledFromProduction',
+                    'as': 'ResolvedFromProduction',
                     'f' : function(snapshot) {
                         return (
                             Ext.Array.contains(killed_states,snapshot.State)
@@ -49,7 +49,7 @@
                     }
                 },
                 {
-                    'as': 'Killed',
+                    'as': 'Resolved',
                     'f' : function(snapshot) {
                         return ( 
                             Ext.Array.contains(killed_states,snapshot.State)
@@ -66,13 +66,13 @@
             return [
                 {
                     "filterField": "CreatedAfterStartFromProduction",
-                    'as':'Arrived (Production)',
+                    'as':'Created (Production)',
                     'f':'filteredCount',
                     'filterValues':[true]
                 },
                 {
-                    'filterField': "KilledFromProduction",
-                    'as':'Killed (Production)',
+                    'filterField': "ResolvedFromProduction",
+                    'as':'Resolved (Production)',
                     'f':'filteredCount',
                     'filterValues':[true]
                 }
@@ -81,13 +81,13 @@
             return [
                 {
                     "filterField": "CreatedAfterStart",
-                    'as':'Arrived',
+                    'as':'Created',
                     'f':'filteredCount',
                     'filterValues':[true]
                 },
                 {
-                    "filterField": "Killed",
-                    'as':'Killed',
+                    "filterField": "Resolved",
+                    'as':'Resolved',
                     'f':'filteredCount',
                     'filterValues':[true]
                 }

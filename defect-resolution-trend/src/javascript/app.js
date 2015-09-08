@@ -13,12 +13,12 @@ Ext.define("TSArrivalKill", {
     },
 
     onScopeChange: function(timeboxScope){
-        if (this.down('tsarrivalkillchart')){
-            this.down('tsarrivalkillchart').destroy();
+        if (this.down('tsdefectresolutiontrendchart')){
+            this.down('tsdefectresolutiontrendchart').destroy();
         }
 
         this.add({
-            xtype: 'tsarrivalkillchart',
+            xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: timeboxScope,
             context: this.getContext(),
             showOnlyProduction: this.showOnlyProduction

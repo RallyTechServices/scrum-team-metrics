@@ -1,6 +1,6 @@
-Ext.define('Rally.technicalservices.chart.ArrivalKill', {
+Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
     extend: 'Ext.panel.Panel', 
-    alias: 'widget.tsarrivalkillchart',
+    alias: 'widget.tsdefectresolutiontrendchart',
     logger: new Rally.technicalservices.Logger(),
 
     config: {
@@ -172,7 +172,7 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
                 fetch: ['State','Release','CreationDate'],
                 hydrate: ['State']
             },
-            calculatorType: 'Rally.TechnicalServices.calculator.DefectArrivalKillCalculator',
+            calculatorType: 'Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator',
             calculatorConfig: {
                 productionDefects: defects_by_location.production,
                 allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
