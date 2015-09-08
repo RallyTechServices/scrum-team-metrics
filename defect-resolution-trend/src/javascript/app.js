@@ -11,19 +11,46 @@ Ext.define("TSArrivalKill", {
             showOnlyProduction:  false
         }
     },
+    
+    layout: { type:'vbox'},
+    
+    timeboxScope: null,
 
     onScopeChange: function(timeboxScope){
-        if (this.down('tsdefectresolutiontrendchart')){
-            this.down('tsdefectresolutiontrendchart').destroy();
+
+        this.timeboxScope = timeboxScope;
+        
+        if (this.down('rallybutton')){
+            this.down('rallybutton').destroy();
         }
 
         this.add({
-            xtype: 'tsdefectresolutiontrendchart',
-            timeboxScope: timeboxScope,
-            context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction
+            xtype: 'rallybutton',
+            text: 'Team View',
+            cls: 'secondary rly-small',
+            listeners: {
+                scope: this,
+                click: this._updateView
+            }
         });
+        
+        this._createChart('Summary');
 
+    },
+    
+    // expect type to be 'Summary' or 'Team'
+    _createChart: function(summary_type) {
+        if (this.down('tsdefectresolutiontrendchart')){
+            this.down('tsdefectresolutiontrendchart').destroy();
+        }
+        
+        this.add({
+            xtype: 'tsdefectresolutiontrendchart',
+            timeboxScope: this.timeboxScope,
+            context: this.getContext(),
+            showOnlyProduction: this.showOnlyProduction,
+            summaryType: summary_type
+        });
     },
     
     getSettingsFields: function() {
@@ -37,6 +64,16 @@ Ext.define("TSArrivalKill", {
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
             }
         ];
+    },
+    
+    _updateView: function(btn){
+        if (btn.text == 'Team View'){
+            btn.setText("< Back to Summary");
+            this._createChart('Team');
+        } else {
+            btn.setText("Team View");
+            this._createChart('Summary');
+        }
     },
     
     getOptions: function() {

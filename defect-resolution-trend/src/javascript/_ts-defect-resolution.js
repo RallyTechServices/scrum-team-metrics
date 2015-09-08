@@ -19,7 +19,14 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
          * @cfg {Boolean} 
          * Show only production defects (defects associated with an incident)
          */
-        showOnlyProduction: false
+        showOnlyProduction: false,
+        /**
+         * 
+         * @cfg {String}
+         * 
+         * Whether to show data in Summary view or by Team.  (Team|Summary)
+         */
+        summaryType: 'Summary'
         
     },
     height: 300,
@@ -50,7 +57,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
         var me = this;
         
         this.setLoading("Getting valid states...",true);
-        Rally.technicalservices.WsapiToolbox._fetchAllowedValues('Defect','State').then({
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues('Defect','State').then({
             scope: this,
             success: function(states){
                 this.fieldValues = states;
@@ -72,7 +79,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
     updateChart: function() {
         var me = this;
         
-        if ( this.showOnlyProduction ) {
+        //if ( this.showOnlyProduction ) {
             this.setLoading("Getting defects...");
             Deft.Chain.pipeline([
                 this._getDefectsInTimebox,
@@ -88,9 +95,9 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             }).always(function() { 
                 me.setLoading(false); 
             });
-        } else {
-            this._makeChart({qa:[],production:[]});
-        }
+//        } else {
+//            this._makeChart({qa:[],production:[]});
+//        }
         
     },
     
@@ -99,7 +106,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
      */
     _getDefectsInTimebox: function() {
         var model = "Defect";
-        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State'];
+        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State','Project','ObjectID'];
         
         var severity_filters = Rally.data.wsapi.Filter.or([
             { property: 'Severity', value: 'Minor Problem' },
@@ -150,8 +157,15 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
     _makeChart: function(defects_by_location){
         if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         var me = this;
-       
+        
         this.logger.log("adding chart", defects_by_location);
+        
+        var projects_by_oid = {};
+        Ext.Array.each(Ext.Array.push(defects_by_location.qa, defects_by_location.production), function(defect){
+            projects_by_oid[defect.get('Project').ObjectID] = defect.get('Project')._refObjectName;
+        });
+        
+        this.logger.log('projects_by_oid', projects_by_oid);
         
         this.add({
             xtype:'rallychart',
@@ -160,7 +174,6 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
-                    
                     CreationDate: {
                         '$gte': Rally.util.DateTime.toIsoString(this.startDate),
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
@@ -180,7 +193,9 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
-                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+                projectsByOID: projects_by_oid,
+                summaryType: me.summaryType
             },
             sort: {
                 "_ValidFrom": 1

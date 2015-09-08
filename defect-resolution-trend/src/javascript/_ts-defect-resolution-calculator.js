@@ -1,98 +1,154 @@
- Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator", {
-     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator", {
+    extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
 
-     config: {
+    config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
         productionDefects: [],
         allDefects: [],
-        showOnlyProduction: false
-     },
-     
-    getDerivedFieldsOnInput: function () {
+        showOnlyProduction: false,
+        summaryType: 'Summary', // || 'Team'
+        projectsByOID: {} // required for 'Team' summaryType
+    },
+    
+    _isCreatedAfterStart: function(snapshot) {
+        var me = this;
+        
+        if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
+            
+            return 
+                snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+        }
+        return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
+
+    },
+    
+    _isResolved: function(snapshot) {
         var me = this;
         var killed_states = this.config.closedStateNames;
-        var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
-            return d.get('ObjectID')
-        });
-        
-        var derived_fields = [];
+
         if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
+            
+            return (
+                Ext.Array.contains(killed_states,snapshot.State)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+                && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+            );
+        }
+
+        return ( 
+            Ext.Array.contains(killed_states,snapshot.State)
+            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate) 
+        );
+
+    },
+    
+    getDerivedFieldsOnInput: function () {
+        var me = this;
+
+        var derived_fields = [];
+        
+        if ( me.summaryType == "Summary" ) { 
             Ext.Array.push(derived_fields, [
                 {
                     'as': 'CreatedAfterStart',
                     'f' : function(snapshot) {
-                        return (
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                        );
+                        if ( me._isCreatedAfterStart(snapshot) ) { 
+                            return 1;
+                        }
+                        return 0;
                     }
                 },
                 {
                     'as': 'Resolved',
                     'f' : function(snapshot) {
-                        return (
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
+                        if ( me._isResolved(snapshot) ) {
+                            return 1;
+                        }
+                        return 0;
+                    }
+                },
+                {
+                    'as': 'Trend',
+                    'f' : function(snapshot) {
+                        return snapshot.CreatedAfterStart - snapshot.Resolved;
                     }
                 }
             ]);
         } else {
-            Ext.Array.push(derived_fields, [
-                {
-                    'as': 'CreatedAfterStart',
-                    'f' : function(snapshot) {
-                        if (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)) { 
-                            return 1;
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                Ext.Array.push(derived_fields, [
+                    {
+                        'as': 'CreatedAfterStart-' + project_oid,
+                        'f' : function(snapshot) {
+                            if ( me._isCreatedAfterStart(snapshot) && snapshot.Project == project_oid) { 
+                                return 1;
+                            }
+                            return 0;
                         }
-                        return 0;
-                    }
-                },
-                {
-                    'as': 'Resolved',
-                    'f' : function(snapshot) {
-                        if ( 
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        ) {
-                            return 1;
+                    },
+                    {
+                        'as': 'Resolved-' + project_oid,
+                        'f' : function(snapshot) {
+                            if ( me._isResolved(snapshot) && snapshot.Project == project_oid) {
+                                return 1;
+                            }
+                            return 0;
                         }
-                        return 0;
+                    },
+                    {
+                        'as': project_oid,
+                        'f' : function(snapshot) {
+                            return snapshot['CreatedAfterStart-'+project_oid] - snapshot['Resolved-'+project_oid];
+                        }
                     }
-                }
-            ]);
+                ]);
+            });
         }
-        
-        derived_fields.push({
-            'as': 'Trend',
-            'f' : function(snapshot) {
-                return snapshot.CreatedAfterStart - snapshot.Resolved;
-            }
-        });
         
         return derived_fields;
     },
      
     getMetrics: function () {
         var me = this;
-        return [
-            {
-                "field": "CreatedAfterStart",
-                'as':'Created',
-                'f':'sum'
-            },
-            {
-                'field': "Resolved",
-                'as':'Resolved',
-                'f':'sum'
-            },
-            {
-                'field':'Trend',
-                'as':'Trend (Created - Resolved)',
-                'f':'sum'
-            }
-        ];
+        var metrics = [];
+
+        if ( me.summaryType == "Summary" ) { 
+            metrics = [
+                {
+                    "field": "CreatedAfterStart",
+                    'as':'Created',
+                    'f':'sum'
+                },
+                {
+                    'field': "Resolved",
+                    'as':'Resolved',
+                    'f':'sum'
+                },
+                {
+                    'field':'Trend',
+                    'as':'Trend (Created - Resolved)',
+                    'f':'sum'
+                }
+            ];
+        } else {
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                console.log(project_oid, project_name);
+                metrics.push({
+                    'field':project_oid,
+                    'as':project_name,
+                    'f':'sum'
+                });
+            });
+        }
+        console.log('metrics:', metrics);
+        return metrics;
     },
     
     runCalculation: function (snapshots) {

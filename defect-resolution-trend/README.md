@@ -1,4 +1,4 @@
-#Arrival/Kill Rate
+#Defect Resolution Trend
 
 This chart shows a traditional arrival kill rate during the release period
 selected.  It does not care whether defects are associated with the release
@@ -6,6 +6,12 @@ directly, only that they were created during the time period.
 
 * Note that items might have been killed during the period, but if those are
 items that were created before the period started, they do not count.
+
+An additional Trend line has been added that shows the difference between the
+number that have been created (arrived) and killed (resolved) to the date.  
+The ideal here is for resolving defects to happen as fast or faster than creating
+new ones, so a rising line is suboptimal, a flat or declining line is better.
+
 
 ## Development Notes
 
