@@ -12,7 +12,9 @@ Ext.define('Rally.technicalservices.InfoLink',{
      * to add a description of the app's use or functionality)
      */
     informationHtml: null,
-    
+    readmeUrl: null,
+    codeUrl: null,
+
     /**
      * 
      * cfg {String} title
@@ -101,27 +103,44 @@ Ext.define('Rally.technicalservices.InfoLink',{
         }
         this.callParent(arguments);
     },
-    
+
+    _getInformationalHtml: function(){
+        var html = '';
+
+        if (this.informationHtml){
+            html += this.informationHtml + '<br/><br/>';
+        }
+
+        if (this.readmeUrl){
+            html += Ext.String.format("For details about the data in this app, please refer to the <a href=\"{0}\" target=\"_blank\">README file</a>.<br/><br/>", this.readmeUrl);
+        }
+
+        if (this.codeUrl){
+            html += Ext.String.format("Get the code <a href=\"{0}\" target=\"_blank\">here.</a><br/><br/>", this.codeUrl);
+        }
+        return html;
+    },
     beforeRender: function() {
-        var me = this;
+        var me = this,
+            informational_html = this._getInformationalHtml();
         this.callParent(arguments);
 
-        if (this.informationHtml) {
+        if (informational_html && informational_html.length > 0) {
             this.addDocked({
                 xtype: 'component',
                 componentCls: 'intro-panel',
                 padding: 2,
-                html: this.informationHtml
+                html: informational_html
             });
         }
-        
+
         this.addDocked({
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
+            html:"This app was created by the Rally Technical Services Team."
         });
-        
+
         if ( APP_BUILD_DATE ) {
             this.addDocked({
                 xtype:'container',

@@ -19,6 +19,8 @@ Ext.define('Rally.technicalservices.Color',{
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
+    storiesCommitted: '#8bbc21',
+    storiesNonCommitted: '#f28f43',
 
 
     colors: ['#2f7ed8', '#8bbc21', '#910000', '#492970', '#f15c80', '#7cb5ec',

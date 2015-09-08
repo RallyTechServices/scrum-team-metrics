@@ -1,9 +1,8 @@
-#Feature Burnup
-Cumulative view of the total features and delivered features for each day during the selected release period.   
+#Features Pushed
 
-The data set for the burnup contains all features associated with the selected release at some point between the release start date and the release end date for the current workspace's default timezone. 
-
-A delivered feature is one that is in State = "Operate" or State = "Done"
+#####Features Pushed into Target Sprint
+Number of features pushed out of the target sprint.  Target Sprint is a custom field on the feature that is used to plan for the feature time frame.
+If a feature is pushed out of 2 target sprints, it will show up in the graph for each time it is pushed.  
 
 ###Notes
 This app relies on the assumption that the lowest level Portfolio Item is a "Feature".  
