@@ -1,4 +1,4 @@
-Ext.define("feature-risk", {
+Ext.define("state-pie", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -8,20 +8,32 @@ Ext.define("feature-risk", {
     logger: new Rally.technicalservices.Logger(),
     defaults: { margin: 10 },
 
-    onScopeChange: function(timeboxScope){
-        if (this.down('tsfeatureriskpie')){
-            this.down('tsfeatureriskpie').destroy();
+    config: {
+        defaultSettings: {
+            modelName: 'HierarchicalRequirement',
+            dropdownField: 'ScheduleState',
+            artifactDisplayName: 'User Stories'
         }
+    },
+    componentName: 'tsdropdownpie',
 
-        this.add({
-            xtype: 'tsfeatureriskpie',
+    onScopeChange: function(timeboxScope){
+        if (this.down(this.componentName)){
+            this.down(this.componentName).destroy();
+        }
+        this.logger.log('onScopeChange', this.getSetting('modelName'), this.getSetting('dropdownField'));
+
+        var cmp_cfg = {
+            xtype: this.componentName,
             timeboxScope: timeboxScope,
-            featureModelName: 'PortfolioItem/Feature',
-            completedStates: ["Operate","Done"],
             width: this.getWidth() || 300,
-            height: this.getHeight() || 300
-        });
-        this.logger.log('width, height', this.getWidth(), this.getHeight());
+            height: this.getHeight() || 300,
+            pieField: this.getSetting('dropdownField'),
+            modelName: this.getSetting('modelName'),
+            artifactDisplayName: this.getSetting('artifactDisplayName')
+        };
+
+        this.add(cmp_cfg);
     },
     getOptions: function() {
         return [
@@ -32,19 +44,19 @@ Ext.define("feature-risk", {
             }
         ];
     },
-    
+
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
-            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/feature-risk/README.md",
-            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/feature-risk"
+            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/state-pie/README.md",
+            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/state-pie"
         });
     },
-    
+
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
     },
-    
+
     //onSettingsUpdate:  Override
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
