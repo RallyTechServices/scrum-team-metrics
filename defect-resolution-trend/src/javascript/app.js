@@ -89,7 +89,10 @@ Ext.define("TSArrivalKill", {
     
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
-        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/defect-resolution-trend/README.md",
+            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/defect-resolution-trend"
+        });
     },
     
     isExternal: function(){
