@@ -3,11 +3,11 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Sep 08 2015 08:32:20 GMT-0600 (MDT) -->
+    <!--  Build Date: Wed Sep 09 2015 10:15:12 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Sep 08 2015 08:32:20 GMT-0600 (MDT)";
-        var CHECKSUM = 24366663310;
+        var APP_BUILD_DATE = "Wed Sep 09 2015 10:15:12 GMT-0600 (MDT)";
+        var CHECKSUM = 24895315821;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -208,6 +208,8 @@ Ext.define('Rally.technicalservices.Color',{
     classificationHighRisk: 'red',
     classificationModerateRisk: 'yellow',
     classificationOther: '#f6f6f6',
+    classificationNotStarted: '#ffffff',
+    classificationCompleted: '#848689',
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
@@ -703,13 +705,17 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         '#df1a7b': 'High Risk',
         '#fce205': 'Moderate Risk',
         '#f9a814': 'High Risk',
-        '#ee6c19': 'High Risk'
+        '#ee6c19': 'High Risk',
+        '#ffffff': 'Not Started',
+        '#848689': 'Completed'
     },
     classificationChartColorMapping: {
         'Other': Rally.technicalservices.Color.classificationOther,
         'On Track': Rally.technicalservices.Color.classificationOnTrack,
         'Moderate Risk': Rally.technicalservices.Color.classificationModerateRisk,
         'High Risk': Rally.technicalservices.Color.classificationHighRisk,
+        'Completed': Rally.technicalservices.Color.classificationCompleted,
+        'Not Started': Rally.technicalservices.Color.classificationNotStarted
     },
 
     constructor: function(config) {
@@ -787,7 +793,7 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
             oids = {};
 
         _.each(records, function(r){
-            var color = r.get('DisplayColor') || 'Other';
+            var color = r.get('DisplayColor') || '#ffffff';
             var classification = this.displayColorClassificationMapping[color] || 'Other';
             color_data[classification] = color_data[classification] || 0;
             color_data[classification]++;

@@ -16,6 +16,8 @@ Ext.define('Rally.technicalservices.Color',{
     classificationHighRisk: 'red',
     classificationModerateRisk: 'yellow',
     classificationOther: '#f6f6f6',
+    classificationNotStarted: '#ffffff',
+    classificationCompleted: '#848689',
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
