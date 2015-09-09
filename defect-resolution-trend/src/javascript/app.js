@@ -1,4 +1,4 @@
-Ext.define("TSArrivalKill", {
+Ext.define("TSDefectResolutionTrend", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -17,25 +17,28 @@ Ext.define("TSArrivalKill", {
     timeboxScope: null,
 
     onScopeChange: function(timeboxScope){
-//
         
         this.timeboxScope = timeboxScope;
         
-        if (this.down('rallybutton')){
-            this.down('rallybutton').destroy();
+        if (!this.down('rallybutton')){
+            this.add({
+                xtype: 'rallybutton',
+                text: 'Team View',
+                cls: 'secondary rly-small',
+                listeners: {
+                    scope: this,
+                    click: this._updateView
+                }
+            });
         }
-
-        this.add({
-            xtype: 'rallybutton',
-            text: 'Team View',
-            cls: 'secondary rly-small',
-            listeners: {
-                scope: this,
-                click: this._updateView
-            }
-        });
         
-        this._createChart('Summary');
+        if ( this.down('tsdefectresolutiontrendchart') ) {
+            if (this.down('tsdefectresolutiontrendchart')){
+                this.down('tsdefectresolutiontrendchart').updateTimebox(this.timeboxScope);
+            }
+        } else {
+            this._createChart('Summary');
+        }
 
     },
     
@@ -45,12 +48,15 @@ Ext.define("TSArrivalKill", {
             this.down('tsdefectresolutiontrendchart').destroy();
         }
         
+        this.logger.log('width', this.width, this.getWidth());
+        
         this.add({
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
             showOnlyProduction: this.showOnlyProduction,
-            summaryType: summary_type
+            summaryType: summary_type,
+            width: this.getWidth() - 25
         });
     },
     

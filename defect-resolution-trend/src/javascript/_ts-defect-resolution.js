@@ -73,31 +73,48 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
         }
         
+        if (!this.down('#chart_box') ) {
+            this.add({
+                xtype:'container',
+                itemId:'chart_box',
+                height: this.height - 10,
+                minWidth: 250
+            });
+        }
+        
+    },
+    
+    updateTimebox: function(timebox) {
+        this.logger.log('updateTimebox', timebox);
+        
+        this.timeboxScope = timebox;
+        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
+            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
+            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
+        }
+        this.updateChart();
     },
     
     // assumes already have defect states saved
     updateChart: function() {
         var me = this;
-        
-        //if ( this.showOnlyProduction ) {
-            this.setLoading("Getting defects...");
-            Deft.Chain.pipeline([
-                this._getDefectsInTimebox,
-                this._separateIntoDiscoveryLocations
-            ],this).then({
-                scope: this,
-                success: function(results){
-                    this._makeChart(results);
-                },
-                failure: function(msg) {
-                    Ext.Msg.alert("Problem with " + this.xtype, msg);
-                }
-            }).always(function() { 
-                me.setLoading(false); 
-            });
-//        } else {
-//            this._makeChart({qa:[],production:[]});
-//        }
+        if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
+
+        this.setLoading("Getting defects...");
+        Deft.Chain.pipeline([
+            this._getDefectsInTimebox,
+            this._separateIntoDiscoveryLocations
+        ],this).then({
+            scope: this,
+            success: function(results){
+                this._makeChart(results);
+            },
+            failure: function(msg) {
+                Ext.Msg.alert("Problem with " + this.xtype, msg);
+            }
+        }).always(function() { 
+            me.setLoading(false); 
+        });
         
     },
     
@@ -155,22 +172,24 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
     },
     
     _makeChart: function(defects_by_location){
-        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         var me = this;
-        
-        this.logger.log("adding chart", defects_by_location);
         
         var projects_by_oid = {};
         Ext.Array.each(Ext.Array.push(defects_by_location.qa, defects_by_location.production), function(defect){
             projects_by_oid[defect.get('Project').ObjectID] = defect.get('Project')._refObjectName;
         });
         
-        this.logger.log('projects_by_oid', projects_by_oid);
+        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         
-        var chart = this.add({
+        this.down('#chart_box').removeAll();
+        this.down('#chart_box').setLoading('Preparing Chart');
+        
+        this.logger.log('creating chart for start/end:', this.startDate, this.endDate);
+        
+        var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
-            //loadMask: false,
+            loadMask: false,
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
@@ -204,6 +223,9 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             chartConfig: this._getChartConfig()
         });
         
+        chart.on('chartRendered', function() { 
+                this.down('#chart_box').setLoading(false);
+            }, this);
         if (this.summaryType == "Team") {
             chart.on('chartRendered', this._splitChartIntoSparkLines,this,{ single: true});
         }
@@ -212,9 +234,8 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
     _splitChartIntoSparkLines: function(chart) {
         var serieses = chart.chartData.series;
         var categories = chart.chartData.categories;
+        
         chart.hide();
-        console.log('--', serieses);
-
         
         var data = Ext.Array.map(serieses, function(series){
             return { Name: series.name, Data: series.data }
@@ -224,18 +245,15 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             data: data,
             sorters: [{property:'Name', direction:'ASC'}]
         });
-        
-        console.log('->', store);
-        
-        this.grid = this.add({
+               
+        this.grid = this.down('#chart_box').add({
             xtype:'rallygrid',
             store: store,
-            width: this.width || 400,
             height: this.height,
             showPagingToolbar: false,
             columnCfgs: [
                 {text: 'Name', flex: 1, dataIndex: 'Name'},
-                {text: 'Trend', dataIndex: 'Data', width: 200, padding: 0, margin: 0, renderer: function(value, meta, record){
+                {text: 'Trend', dataIndex: 'Data', width: this._getTrendWidth(), padding: 0, margin: 0, renderer: function(value, meta, record){
 //                    meta.tdCls = meta.tdCls + 'chart-target';
                     return '<div class="chart-target" style="height:25px;"></div>';
                 }}
@@ -244,6 +262,12 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
 
         this.grid.on('viewready', this._renderSparkLines, this);
         
+    },
+    
+    _getTrendWidth: function() {
+        var trend_width = this.width / 2;
+        if ( trend_width < 100 ) { trend_width = 100; }
+        return trend_width;
     },
     
     _renderSparkLines: function() {
@@ -265,7 +289,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
                 
                                 
                 Ext.create('Rally.ui.chart.Chart',{
-                    width: 250,
+                    width: this._getTrendWidth(),
                     chartData: {
                         series: series
                     },
@@ -312,7 +336,12 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             xAxis: {
                 tickmarkPlacement: 'on',
                 tickInterval: 14,
-                labels: { rotation: -65, align: 'right' }
+                labels: { 
+                    rotation: -45,
+                    formatter: function(){
+                        return Rally.util.DateTime.format(Rally.util.DateTime.fromIsoString(this.value), 'M-d');
+                    }
+                }
 
             },
             tooltip: {
