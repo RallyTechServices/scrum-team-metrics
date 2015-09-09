@@ -1,17 +1,19 @@
 #Defect Resolution Trend
 
-This chart shows a traditional arrival kill rate during the release period
+This chart shows the rate of items created and resolved during the release period
 selected.  It does not care whether defects are associated with the release
 directly, only that they were created during the time period.
 
-* Note that items might have been killed during the period, but if those are
+* Note that items might have been resolved during the period, but if they are
 items that were created before the period started, they do not count.
 
 An additional Trend line has been added that shows the difference between the
-number that have been created (arrived) and killed (resolved) to the date.  
-The ideal here is for resolving defects to happen as fast or faster than creating
-new ones, so a rising line is suboptimal, a flat or declining line is better.
+number that have been created and killed to the date.  The ideal here is for resolving 
+defects to happen as fast or faster than creating new ones, so a rising line is 
+suboptimal, a flat or declining line is better.
 
+There is an app setting to let the installer decide whether the app will count all
+defects or only defects associated with production via a special web link field.
 
 ## Development Notes
 
