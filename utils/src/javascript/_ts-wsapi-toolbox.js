@@ -20,6 +20,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
     fetchWsapiRecords: function(model, query_filters, fetch_fields){
         var deferred = Ext.create('Deft.Deferred');
 
@@ -75,7 +76,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         return deferred;
     },
     
-    _fetchAllowedValues: function(model,field_name) {
+    fetchAllowedValues: function(model,field_name) {
         var deferred = Ext.create('Deft.Deferred');
 
         Rally.data.ModelFactory.getModel({
