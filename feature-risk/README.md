@@ -3,11 +3,11 @@
 Feature risk as determined by the color of the feature.  
 
 Current feature risk colors:
-        '#107c1e': 'On Track',
-        '#df1a7b': 'High Risk',
-        '#fce205': 'Moderate Risk',
-        '#f9a814': 'High Risk',
-        '#ee6c19': 'High Risk'
+        On Track      :  green (107c1e)
+        High Risk     :  pink, orange or light orange (df1a7b, ee6c19, f9a814)
+        Moderate Risk :  yellow (fce205)
+        Not Started   :  white
+        Completed     :  grey
 
 All other feature colors (or lack of color) are ignored and represented by "Other".  
 
