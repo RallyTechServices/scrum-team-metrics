@@ -139,7 +139,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
             ];
         } else {
             Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
-                console.log(project_oid, project_name);
+
                 metrics.push({
                     'field':project_oid,
                     'as':project_name,
@@ -147,7 +147,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
                 });
             });
         }
-        console.log('metrics:', metrics);
+
         return metrics;
     },
     

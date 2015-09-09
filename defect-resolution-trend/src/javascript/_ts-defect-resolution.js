@@ -167,7 +167,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
         
         this.logger.log('projects_by_oid', projects_by_oid);
         
-        this.add({
+        var chart = this.add({
             xtype:'rallychart',
             height: this.height - 15,
             //loadMask: false,
@@ -203,6 +203,104 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
             chartColors: Rally.technicalservices.Color.colors,
             chartConfig: this._getChartConfig()
         });
+        
+        if (this.summaryType == "Team") {
+            chart.on('chartRendered', this._splitChartIntoSparkLines,this,{ single: true});
+        }
+    },
+    
+    _splitChartIntoSparkLines: function(chart) {
+        var serieses = chart.chartData.series;
+        var categories = chart.chartData.categories;
+        chart.hide();
+        console.log('--', serieses);
+
+        
+        var data = Ext.Array.map(serieses, function(series){
+            return { Name: series.name, Data: series.data }
+        });
+        
+        var store =  Ext.create('Rally.data.custom.Store', {
+            data: data,
+            sorters: [{property:'Name', direction:'ASC'}]
+        });
+        
+        console.log('->', store);
+        
+        this.grid = this.add({
+            xtype:'rallygrid',
+            store: store,
+            width: this.width || 400,
+            height: this.height,
+            showPagingToolbar: false,
+            columnCfgs: [
+                {text: 'Name', flex: 1, dataIndex: 'Name'},
+                {text: 'Trend', dataIndex: 'Data', width: 200, padding: 0, margin: 0, renderer: function(value, meta, record){
+//                    meta.tdCls = meta.tdCls + 'chart-target';
+                    return '<div class="chart-target" style="height:25px;"></div>';
+                }}
+            ]
+        });
+
+        this.grid.on('viewready', this._renderSparkLines, this);
+        
+    },
+    
+    _renderSparkLines: function() {
+        var store = this.grid.store;
+        for ( var i=0; i< store.getTotalCount(); i++ ) {
+            var record = store.getAt(i);
+            var holder = Ext.DomQuery.select('.chart-target', this.grid.view.getNode(i));
+            if ( !Ext.isEmpty(record) && holder.length) {
+                var columnElement = holder[0];
+                columnElement.innerHTML = '';
+                
+                var columnValue = record.get('Data');
+                
+                var series = [{
+                    name:record.get('Name'),
+                    data:record.get('Data'),
+                    marker: { enabled: false }
+                }];
+                
+                                
+                Ext.create('Rally.ui.chart.Chart',{
+                    width: 250,
+                    chartData: {
+                        series: series
+                    },
+                    chartConfig: {
+                        chart: {
+                            type:'area',
+                            style: {
+                                overflow: 'visible'
+                            },
+                            margin: [2,0,2,0],
+                            height: 25
+                        },
+                        title: {
+                            text: ''
+                        },
+                        credits: { enabled: false },
+                        xAxis: { 
+                            labels:{ enabled: false },
+                            title: { text: null },
+                            tickLength: 0
+                        },
+                        yAxis: { 
+                            labels:{ enabled: false },
+                            title: { text:  null },
+                            endOnTick: false,
+                            startOnTick: false,
+                            tickPositions: [0]
+                        },
+                        legend: { enabled: false },
+                        tooltip: { enabled: false }
+                    },
+                    renderTo: columnElement
+                });
+            }
+        }
     },
     
     _getChartConfig: function() {

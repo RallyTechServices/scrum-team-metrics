@@ -17,7 +17,8 @@ Ext.define("TSArrivalKill", {
     timeboxScope: null,
 
     onScopeChange: function(timeboxScope){
-
+//
+        
         this.timeboxScope = timeboxScope;
         
         if (this.down('rallybutton')){
