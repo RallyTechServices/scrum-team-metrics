@@ -15,3 +15,12 @@
     margin-right: 5px;
     cursor: pointer;
 }
+
+.circle_value {
+    font-size: 250%;
+    color: white;
+}
+
+.circle_label {
+    color: white;
+}

@@ -1,11 +1,14 @@
-#Arrival/Kill Rate
+#Defect Resolution Time
 
-This chart shows a traditional arrival kill rate during the release period
-selected.  It does not care whether defects are associated with the release
+This chart shows the average rate of response over time for defects found during
+a release timebox.  It does not care whether defects are associated with the release
 directly, only that they were created during the time period.
 
 * Note that items might have been killed during the period, but if those are
 items that were created before the period started, they do not count.
+
+There is an app setting to let the installer decide whether the app will count all
+defects or only defects associated with production via a special web link field.
 
 ## Development Notes
 
