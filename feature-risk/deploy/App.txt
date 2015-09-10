@@ -3,11 +3,11 @@
 <head>
     <title>Feature Risk</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 09 2015 10:15:12 GMT-0600 (MDT) -->
+    <!--  Build Date: Thu Sep 10 2015 09:35:47 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 09 2015 10:15:12 GMT-0600 (MDT)";
-        var CHECKSUM = 24895315821;
+        var APP_BUILD_DATE = "Thu Sep 10 2015 09:35:47 GMT-0600 (MDT)";
+        var CHECKSUM = 24890282373;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -208,8 +208,8 @@ Ext.define('Rally.technicalservices.Color',{
     classificationHighRisk: 'red',
     classificationModerateRisk: 'yellow',
     classificationOther: '#f6f6f6',
-    classificationNotStarted: '#ffffff',
-    classificationCompleted: '#848689',
+    classificationNotStarted: '#848689',
+    classificationCompleted: '#105CAB',
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
@@ -706,8 +706,8 @@ Ext.define('Rally.technicalservices.chart.FeatureRisk', {
         '#fce205': 'Moderate Risk',
         '#f9a814': 'High Risk',
         '#ee6c19': 'High Risk',
-        '#ffffff': 'Not Started',
-        '#848689': 'Completed'
+        '#848689': 'Not Started',
+        '#105CAB': 'Completed'
     },
     classificationChartColorMapping: {
         'Other': Rally.technicalservices.Color.classificationOther,
