@@ -1,6 +1,6 @@
 {
-    "name": "Arrival/Kill Rate",
-    "className": "TSArrivalKill",
+    "name": "Defect Response Time",
+    "className": "TSDefectResponseTime",
     "server": "https://rally1.rallydev.com",
     "sdk": "2.0",
     "apiKey": "_PUT_APIKEY_HERE_"

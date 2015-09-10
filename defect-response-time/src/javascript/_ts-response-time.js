@@ -1,6 +1,6 @@
-Ext.define('Rally.technicalservices.chart.ResponseTime', {
+Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
     extend: 'Ext.panel.Panel', 
-    alias: 'widget.tsresponsetimechart',
+    alias: 'widget.tsdefectresponsetime',
     logger: new Rally.technicalservices.Logger(),
 
     config: {
@@ -19,7 +19,14 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
          * @cfg {Boolean} 
          * Show only production defects (defects associated with an incident)
          */
-        showOnlyProduction: false
+        showOnlyProduction: false,
+        /**
+         * 
+         * @cfg {String}
+         * 
+         * Whether to show data in Summary view or by Team.  (Team|Summary)
+         */
+        summaryType: 'Summary'
         
     },
     height: 300,
@@ -50,7 +57,7 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
         var me = this;
         
         this.setLoading("Getting valid states...",true);
-        Rally.technicalservices.WsapiToolbox._fetchAllowedValues('Defect','State').then({
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues('Defect','State').then({
             scope: this,
             success: function(states){
                 this.fieldValues = states;
@@ -66,31 +73,48 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
             this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
         }
         
+        if (!this.down('#chart_box') ) {
+            this.add({
+                xtype:'container',
+                itemId:'chart_box',
+                height: this.height - 10,
+                minWidth: 250
+            });
+        }
+        
+    },
+    
+    updateTimebox: function(timebox) {
+        this.logger.log('updateTimebox', timebox);
+        
+        this.timeboxScope = timebox;
+        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
+            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
+            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
+        }
+        this.updateChart();
     },
     
     // assumes already have defect states saved
     updateChart: function() {
         var me = this;
-        
-        if ( this.showOnlyProduction ) {
-            this.setLoading("Getting defects...");
-            Deft.Chain.pipeline([
-                this._getDefectsInTimebox,
-                this._separateIntoDiscoveryLocations
-            ],this).then({
-                scope: this,
-                success: function(results){
-                    this._makeChart(results);
-                },
-                failure: function(msg) {
-                    Ext.Msg.alert("Problem with " + this.xtype, msg);
-                }
-            }).always(function() { 
-                me.setLoading(false); 
-            });
-        } else {
-            this._makeChart({qa:[],production:[]});
-        }
+        if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
+
+        this.setLoading("Getting defects...");
+        Deft.Chain.pipeline([
+            this._getDefectsInTimebox,
+            this._separateIntoDiscoveryLocations
+        ],this).then({
+            scope: this,
+            success: function(results){
+                this._makeChart(results);
+            },
+            failure: function(msg) {
+                Ext.Msg.alert("Problem with " + this.xtype, msg);
+            }
+        }).always(function() { 
+            me.setLoading(false); 
+        });
         
     },
     
@@ -99,7 +123,7 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
      */
     _getDefectsInTimebox: function() {
         var model = "Defect";
-        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State'];
+        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State','Project','ObjectID'];
         
         var severity_filters = Rally.data.wsapi.Filter.or([
             { property: 'Severity', value: 'Minor Problem' },
@@ -148,19 +172,35 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
     },
     
     _makeChart: function(defects_by_location){
-        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         var me = this;
-       
-        this.logger.log("adding chart", defects_by_location);
         
-        this.add({
+        var projects_by_oid = {};
+        Ext.Array.each(Ext.Array.push(defects_by_location.qa, defects_by_location.production), function(defect){
+            projects_by_oid[defect.get('Project').ObjectID] = defect.get('Project')._refObjectName;
+        });
+        
+        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
+        
+        this.down('#chart_box').removeAll();
+        this.down('#chart_box').setLoading('Preparing Chart');
+        
+        this.logger.log('creating chart for start/end:', this.startDate, this.endDate);
+        
+        var colors = ['#fff'];
+        this.chartType = 'pie';
+        if ( me.summaryType != 'Summary' ) {
+            this.chartType = 'column';
+            colors = ['blue'];
+        }
+        
+        
+        var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
-            //loadMask: false,
+            loadMask: false,
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
-                    
                     CreationDate: {
                         '$gte': Rally.util.DateTime.toIsoString(this.startDate),
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
@@ -169,43 +209,58 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
                     _ProjectHierarchy: this.context.getProject().ObjectID
                 },
                 compress: true,
-                fetch: ['State','Release','CreationDate'],
+                fetch: ['State','CreationDate'],
                 hydrate: ['State']
             },
             calculatorType: 'Rally.TechnicalServices.calculator.DefectResponseTimeCalculator',
             calculatorConfig: {
+                trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
-                allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
-                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                projectsByOID: projects_by_oid,
+                summaryType: me.summaryType,
+                chartType: me.chartType
             },
             sort: {
                 "_ValidFrom": 1
             },
-            chartColors: Rally.technicalservices.Color.colors,
-            chartConfig: this._getChartConfig()
+            chartConfig: this._getChartConfig(me.summaryType),
+            chartColors: colors
         });
+        
+        chart.on('chartRendered', function() { 
+                this.down('#chart_box').setLoading(false);
+            }, this);
     },
     
-    _getChartConfig: function() {
+    _getChartConfig: function(summary_type) {
+        if ( summary_type == "Summary" ) {
+            return this._getSummaryChartConfig();
+        } 
+        return this._getTeamChartConfig();
+    },
+    
+    _getSummaryChartConfig: function() {
         return  {
-            chart: {},
+            chart: {
+                type: 'pie'
+            },
             title: {
                 text: null
             },
             xAxis: {
-                tickmarkPlacement: 'on',
-                tickInterval: 14,
-                labels: { rotation: -65, align: 'right' }
-
+                labels: { 
+                    enabled: false
+                }
+            },
+            legend: { 
+                enabled: false
             },
             tooltip: {
-                formatter: function(){
-                    return Ext.String.format('{0}: <b>{1}</b>',this.series.name, this.y);
-                }
+                enabled: false
             },
             yAxis: {
                 title: { 
@@ -214,9 +269,62 @@ Ext.define('Rally.technicalservices.chart.ResponseTime', {
                 min: 0
             },
             plotOptions: {
-                'line': {
+                'pie': {
+                    colors: ['#fff'],
+                    allowPointSelect: false,
+                    dataLabels: {
+                        distance: -100,
+                        enabled: true,
+                        style: {
+                            color: 'gray',
+                            fontSize: '25px'
+                        },
+                        formatter: function() {
+                            return Ext.util.Format.number(this.y,'0.0') + " Days";
+                        }
+                    }
+                },
+                'column': {
                     marker: { enabled: false }
                 }
+            }
+        };
+    },
+    
+    _getTeamChartConfig: function() {
+        return  {
+            
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: null
+            },
+            tooltip: {
+                formatter: function(){
+                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Ext.util.Format.number(this.point.y,'0.0'));
+                }
+            },
+            xAxis: {
+                type: 'category',
+                labels: {
+                    formatter: function(){
+                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
+                    }
+                }
+            },
+            yAxis: {
+                title: { text: 'Days'}
+            },
+            plotOptions: {
+                bar: {
+                    dataLabels: {
+                        enabled: false
+                    }
+                }
+            },
+            legend: {
+                enabled: false
             }
         };
     }

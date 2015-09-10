@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Arrival/Kill Rate</title>
+    <title>Defect Response Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:12:13 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 10 2015 16:14:54 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:12:13 GMT-0700 (PDT)";
-        var CHECKSUM = 24460615506;
+        var APP_BUILD_DATE = "Thu Sep 10 2015 16:14:54 GMT-0700 (PDT)";
+        var CHECKSUM = 34555080158;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -29,7 +29,9 @@ Ext.define('Rally.technicalservices.InfoLink',{
      * to add a description of the app's use or functionality)
      */
     informationHtml: null,
-    
+    readmeUrl: null,
+    codeUrl: null,
+
     /**
      * 
      * cfg {String} title
@@ -118,27 +120,44 @@ Ext.define('Rally.technicalservices.InfoLink',{
         }
         this.callParent(arguments);
     },
-    
+
+    _getInformationalHtml: function(){
+        var html = '';
+
+        if (this.informationHtml){
+            html += this.informationHtml + '<br/><br/>';
+        }
+
+        if (this.readmeUrl){
+            html += Ext.String.format("For details about the data in this app, please refer to the <a href=\"{0}\" target=\"_blank\">README file</a>.<br/><br/>", this.readmeUrl);
+        }
+
+        if (this.codeUrl){
+            html += Ext.String.format("Get the code <a href=\"{0}\" target=\"_blank\">here.</a><br/><br/>", this.codeUrl);
+        }
+        return html;
+    },
     beforeRender: function() {
-        var me = this;
+        var me = this,
+            informational_html = this._getInformationalHtml();
         this.callParent(arguments);
 
-        if (this.informationHtml) {
+        if (informational_html && informational_html.length > 0) {
             this.addDocked({
                 xtype: 'component',
                 componentCls: 'intro-panel',
                 padding: 2,
-                html: this.informationHtml
+                html: informational_html
             });
         }
-        
+
         this.addDocked({
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
+            html:"This app was created by the Rally Technical Services Team."
         });
-        
+
         if ( APP_BUILD_DATE ) {
             this.addDocked({
                 xtype:'container',
@@ -189,9 +208,13 @@ Ext.define('Rally.technicalservices.Color',{
     classificationHighRisk: 'red',
     classificationModerateRisk: 'yellow',
     classificationOther: '#f6f6f6',
+    classificationNotStarted: '#ffffff',
+    classificationCompleted: '#848689',
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
+    storiesCommitted: '#8bbc21',
+    storiesNonCommitted: '#f28f43',
 
 
     colors: ['#2f7ed8', '#8bbc21', '#910000', '#492970', '#f15c80', '#7cb5ec',
@@ -233,6 +256,177 @@ Ext.define('Rally.technicalservices.Color',{
     ]
 
 
+});
+
+Ext.define('Rally.technicalservices.MungingToolbox', {
+    singleton: true,
+    getPieSeriesData: function(records, pie_field){
+        var pie_hash = Rally.technicalservices.MungingToolbox.getCountByField(records, pie_field),
+            data = [];
+
+        var keys = _.keys(pie_hash);
+        keys = Ext.Array.sort(keys);
+
+        _.each(keys, function(key){
+            data.push({
+                name: key,
+                y: pie_hash[key] || 0
+            });
+        });
+        return data;
+
+    },
+    getCountByField: function(records, field){
+        var hash = {};
+
+        _.each(records, function(r){
+            var val = r.get(field);
+            if (val){
+                if (hash[val] == undefined){
+                    hash[val] = 0;
+                }
+                hash[val] ++;
+            }
+        });
+        return hash;
+    }
+});
+
+Ext.define('Rally.technicalservices.DataPopover', {
+    alias: 'widget.tsdatapopover',
+    extend: 'Rally.ui.dialog.Dialog',
+
+    id: 'grid-popover',
+    cls: 'grid-popover',
+
+    maxWidth: 400,
+    maxHeight: 300,
+
+    layout: 'fit',
+
+    autoShow: true,
+    componentCls: 'rly-popover dark-container',
+    header: true,
+    preventFocusOnActivate: true,
+    shouldHidePopoverOnBodyClick: false,
+    shouldHidePopoverOnIframeClick: false,
+    autoCenter: false,
+    closable: true,
+    shadow: false,
+
+    /**
+     * @cfg {Ext.Element} target (Required)
+     * The default element that the popover should be aligned to when positioned
+     */
+    target: undefined,
+
+    /**
+     * @cfg {String} targetSelector
+     * The selector for target to protect in the case of the target being removed from the dom i.e. grid refresh
+     */
+    targetSelector: undefined,
+
+    /**
+     * @cfg {String} targetTriggeredCls
+     * The class to add to the target when the popover is being displayed
+     */
+    targetTriggeredCls: undefined,
+
+    /**
+     * @cfg {Ext.Component} owner
+     * The Ext component that owns this popover. This is useful for doing .up() component queries or tying data requests to the original component instead of the popover component
+     */
+    owner: undefined,
+
+    /**
+     * @cfg {String|Array|Function} placement
+     * How to position the popover -  right | left | top | bottom
+     * Can be a string if you only want to allow one position, an array of strings if you want to allow multiple, or a function to determine which ones you want and return the string or array of strings
+     * The popover will use this value as a preference choosing the first placeable value first
+     */
+    placement: undefined,
+
+    /**
+     * @cfg Array offsetFromTarget
+     * Offset (Object) x and y offset positions of popover when on top, right, bottom and left
+     */
+    offsetFromTarget: [
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0}
+    ],
+
+    /**
+     * @cfg Array viewportPadding
+     * Offset (Array) amounts from Viewport edge - top | right | bottom | left
+     * when specified, the popover will be shifted within the viewport (plus any offset)
+     */
+    viewportPadding: [0,0,0,0],
+
+    /**
+     * @cfg Array targetPosition
+     * Position (String) for popover's target when on top, right, bottom and left
+     */
+    targetPosition: ['b-t','l-r','t-b','r-l'],
+
+    /**
+     * @cfg Array chevronPosition
+     * Position (String) for popover's chevron when on top, right, bottom and left
+     */
+    chevronPosition: ['t-b','r-l','b-t','l-r'],
+
+    /**
+     * @cfg Array chevronOffset
+     * Offset (Object) x and y offset positions of chevron when on top, right, bottom and left
+     */
+    chevronOffset: [
+        {x: 0, y: -14},
+        {x: 14, y: 0},
+        {x: 0, y: 14},
+        {x: -8, y: 0}
+    ],
+
+    /**
+     * @cfg Boolean showChevron
+     * Set to false to not show the chevron when displaying the popover
+     */
+    showChevron: true,
+
+    constructor: function(config) {
+        this.title = config.title || '';
+        var filters = [];
+        _.each(config.oids, function(oid){
+            filters.push({
+                property: 'ObjectID',
+                value: oid
+            });
+        });
+        filters= Rally.data.wsapi.Filter.or(filters);
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: config.modelName,
+            fetch: config.fetch,
+            enablePostGet: true,
+            filters: filters,
+            pageSize: Math.max(config.oids.length, 200),
+            limit: config.oids.length
+        });
+        store.load();
+
+        var items = [{
+            xtype: 'rallygrid',
+            columnCfgs: config.fetch,
+            store: store,
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
+        }];
+
+        config.items = Ext.merge(items, config.items);
+
+        this.callParent(arguments);
+    }
 });
 
 Ext.define('Rally.technicalservices.LookbackToolbox',{
@@ -414,6 +608,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
     fetchWsapiRecords: function(model, query_filters, fetch_fields){
         var deferred = Ext.create('Deft.Deferred');
 
@@ -469,7 +664,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         return deferred;
     },
     
-    _fetchAllowedValues: function(model,field_name) {
+    fetchAllowedValues: function(model,field_name) {
         var deferred = Ext.create('Deft.Deferred');
 
         Rally.data.ModelFactory.getModel({
@@ -492,311 +687,128 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
     }
 });
 
-/**
- * A link that pops up a version dialog box
- */
+Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
+    extend: "Rally.data.lookback.calculator.TimeInStateCalculator",
 
-Ext.define('Rally.technicalservices.InfoLink',{
-    extend: 'Rally.ui.dialog.Dialog',
-    alias: 'widget.tsinfolink',
-    
-    /**
-     * @cfg {String} informationHtml
-     * Additional text to be displayed on the popup dialog (for exmaple,
-     * to add a description of the app's use or functionality)
-     */
-    informationHtml: null,
-    
-    /**
-     * 
-     * cfg {String} title
-     * The title for the dialog box
-     */
-    title: "Build Information",
-    
-    defaults: { padding: 5, margin: 5 },
-
-    closable: true,
-     
-    draggable: true,
-
-    autoShow: true,
-   
-    width: 350, 
-    
-    initComponent: function() {
-        var id = Ext.id(this);
-        this.title =  "<span class='icon-help'> </span>" + this.title;
-        this.callParent(arguments);
-    },
-    
-    _generateChecksum: function(string){
-        var chk = 0x12345678,
-            i;
-        string = string.replace(/var CHECKSUM = .*;/,"");
-        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
-        
-        for (i = 0; i < string.length; i++) {
-            chk += (string.charCodeAt(i) * i);
-        }
-    
-        return chk;
-    },
-    
-    _checkChecksum: function(container) {
-        var deferred = Ext.create('Deft.Deferred');
-        console.log("_checkChecksum", container);
-        var me = this;
-        
-        Ext.Ajax.request({
-            url: document.URL,
-            params: {
-                id: 1
-            },
-            success: function (response) {
-                text = response.responseText;
-                if ( CHECKSUM ) {
-                    if ( CHECKSUM !== me._generateChecksum(text) ) {
-                        console.log("Checksums don't match!");
-                        deferred.resolve(false);
-                        return;
-                    }
-                }
-                deferred.resolve(true);
-            }
-        });
-        
-        return deferred.promise;
-    },
-    
-    afterRender: function() {
-        var app = Rally.getApp();
-        
-        if (! app.isExternal() ) {
-                
-            this._checkChecksum(app).then({
-                scope: this,
-                success: function(result){
-                    if ( !result ) {
-                        this.addDocked({
-                            xtype:'container',
-                            cls: 'build-info',
-                            padding: 2,
-                            html:'<span class="icon-warning"> </span>Checksums do not match'
-                        });
-                    }
-                },
-                failure: function(msg){
-                    console.log("oops:",msg);
-                }
-            });
-        } else {
-            this.addDocked({
-                xtype:'container',
-                cls: 'build-info',
-                padding: 2,
-                html:'... Running externally'
-            });
-        }
-        this.callParent(arguments);
-    },
-    
-    beforeRender: function() {
-        var me = this;
-        this.callParent(arguments);
-
-        if (this.informationHtml) {
-            this.addDocked({
-                xtype: 'component',
-                componentCls: 'intro-panel',
-                padding: 2,
-                html: this.informationHtml
-            });
-        }
-        
-        this.addDocked({
-            xtype:'container',
-            cls: 'build-info',
-            padding: 2,
-            html:"This app was created by the Rally Technical Services Team."
-        });
-        
-        if ( APP_BUILD_DATE ) {
-            this.addDocked({
-                xtype:'container',
-                cls: 'build-info',
-                padding: 2,
-                html:'Build date/time: ' + APP_BUILD_DATE
-            });
-        }
-    }
-});
-
-/*
- */
-Ext.define('Rally.technicalservices.Logger',{
-    constructor: function(config){
-        Ext.apply(this,config);
-    },
-    log: function(args){
-        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
-        //var output_args = arguments;
-        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
-        //output_args = Ext.Array.push(output_args,arguments);
-        
-        var output_args = [];
-        output_args = Ext.Array.push(output_args,[timestamp]);
-        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
-
-        window.console && console.log.apply(console,output_args);
-    }
-
-});
-
- Ext.define("Rally.TechnicalServices.calculator.DefectArrivalKillCalculator", {
-     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
-
-     config: {
+    config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
         productionDefects: [],
-        allDefects: [],
-        showOnlyProduction: false
-     },
-     
-    getDerivedFieldsOnInput: function () {
-        var me = this;
-        var killed_states = this.config.closedStateNames;
-        var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
-            return d.get('ObjectID')
-        });
-        
-        if ( me.config.showOnlyProduction) {
-            return [
-                
-                {
-                    'as': 'CreatedAfterStartFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                        );
-                    }
-                },
-                {
-                    'as': 'KilledFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                }
-            ];
-        } else {
-            return [
-                {
-                    'as': 'CreatedAfterStart',
-                    'f' : function(snapshot) {
-                        return ( 
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                },
-                {
-                    'as': 'Killed',
-                    'f' : function(snapshot) {
-                        return ( 
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                }];
-        }
-    },
-     
-    getMetrics: function () {
-        var me = this;
-        if ( me.config.showOnlyProduction) {
-            return [
-                {
-                    "filterField": "CreatedAfterStartFromProduction",
-                    'as':'Arrived (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    'filterField': "KilledFromProduction",
-                    'as':'Killed (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        } else {
-            return [
-                {
-                    "filterField": "CreatedAfterStart",
-                    'as':'Arrived',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    "filterField": "Killed",
-                    'as':'Killed',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        }
-    },
-
-    runCalculation: function (snapshots) {
-        var chartData = this.callParent(arguments);
-        var today = Rally.util.DateTime.add(new Date(),"day",1); //include today
-        Ext.Array.each(chartData.series,function(series,idx){
-            this._removeFutureSeries(chartData, idx, this._indexOfDate(chartData,today,true));
-        },this);
-
-        return chartData;
-    },
-
-    _indexOfDate: function(chartData, date, find_next_day_if_missing ) {
-         var dateStr = Ext.Date.format(date, 'Y-m-d');
-         var categories = chartData.categories;
-         
-         var idx = Ext.Array.indexOf(categories,dateStr);
-         if ( idx > -1 ) {
-            return idx;
-         }
-         if ( find_next_day_if_missing ) {
-            var test_idx = categories.length - 1;
-            while ( test_idx > -1 ) {
-                if (categories[test_idx] > dateStr ) {
-                    break;
-                }
-                test_idx = test_idx - 1;
-            }
-            return test_idx;
-         }
-         return -1;
+        showOnlyProduction: false,
+        chartType: 'column', /* column or pie */
+        summaryType: 'Summary', // || 'Team'
+        projectsByOID: {} // required for 'Team' summaryType
     },
     
-    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
+    _isCreatedAfterStart: function(snapshot) {
+        var me = this;
         
-        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
-            var idx = cutOffIndex;
+        if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
             
-            while(idx < chartData.series[seriesIndex].data.length) {
-                chartData.series[seriesIndex].data[idx] = null;
-                idx++;
+            return 
+                snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+        }
+        return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
+
+    },
+    
+    _isResolved: function(snapshot) {
+        var me = this;
+        var killed_states = this.config.closedStateNames;
+
+        if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
+            
+            return (
+                Ext.Array.contains(killed_states,snapshot.State)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+                && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+            );
+        }
+
+        return ( 
+            Ext.Array.contains(killed_states,snapshot.State)
+            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate) 
+        );
+
+    },
+    
+    runCalculation: function (snapshots) {
+        var me = this;
+        
+        this.startDate = this.startDate || this._getStartDate(snapshots);
+        this.endDate = this.endDate || this._getEndDate(snapshots);
+            
+        var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
+            return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
+                 && me._isCreatedAfterStart(snapshot)
+                 && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
+        });
+        
+        var cycle_times_by_project = {};
+        var cycle_times = [];
+        
+        Ext.Array.each(final_snaps,function(snapshot){
+            var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
+            var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
+            var project_oid = snapshot.Project;
+            
+            if ( ! cycle_times_by_project[project_oid] ) {
+                cycle_times_by_project[project_oid] = [];
             }
+            
+            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
+            cycle_times.push(time_difference);
+            
+            cycle_times_by_project[project_oid].push(time_difference);
+        });
+
+        var series = [];
+        var categories = [];
+        
+        if ( me.summaryType == "Summary" ) { 
+            var average = Ext.Array.mean(cycle_times);
+            
+            if ( me.granularity == "day" ) {
+                average = average / 24;
+            }
+            series = [{name:'Average Response Time',data: [average]}];
+            
+            if ( me.chartType == "pie" ) {
+                series = [{type:'pie', data: [['average',average]] }];
+            }
+        } else {
+            var series_data = [];
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
+                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    if ( me.granularity == "day" ) {
+                        average = average / 24;
+                    }
+                    series_data.push(average);
+                    categories.push(project_name);
+                }
+            });
+            series = [{name:'Average Resolution Time', data:series_data}];
+        }
+        
+        console.log('series: ', series);
+        
+        return {
+            categories: categories,
+            series: series
         }
     }
     
  });
-Ext.define('Rally.technicalservices.chart.ArrivalKill', {
+Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
     extend: 'Ext.panel.Panel', 
-    alias: 'widget.tsarrivalkillchart',
+    alias: 'widget.tsdefectresponsetime',
     logger: new Rally.technicalservices.Logger(),
 
     config: {
@@ -815,7 +827,14 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
          * @cfg {Boolean} 
          * Show only production defects (defects associated with an incident)
          */
-        showOnlyProduction: false
+        showOnlyProduction: false,
+        /**
+         * 
+         * @cfg {String}
+         * 
+         * Whether to show data in Summary view or by Team.  (Team|Summary)
+         */
+        summaryType: 'Summary'
         
     },
     height: 300,
@@ -846,7 +865,7 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
         var me = this;
         
         this.setLoading("Getting valid states...",true);
-        Rally.technicalservices.WsapiToolbox._fetchAllowedValues('Defect','State').then({
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues('Defect','State').then({
             scope: this,
             success: function(states){
                 this.fieldValues = states;
@@ -862,31 +881,48 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
             this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
         }
         
+        if (!this.down('#chart_box') ) {
+            this.add({
+                xtype:'container',
+                itemId:'chart_box',
+                height: this.height - 10,
+                minWidth: 250
+            });
+        }
+        
+    },
+    
+    updateTimebox: function(timebox) {
+        this.logger.log('updateTimebox', timebox);
+        
+        this.timeboxScope = timebox;
+        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
+            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
+            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
+        }
+        this.updateChart();
     },
     
     // assumes already have defect states saved
     updateChart: function() {
         var me = this;
-        
-        if ( this.showOnlyProduction ) {
-            this.setLoading("Getting defects...");
-            Deft.Chain.pipeline([
-                this._getDefectsInTimebox,
-                this._separateIntoDiscoveryLocations
-            ],this).then({
-                scope: this,
-                success: function(results){
-                    this._makeChart(results);
-                },
-                failure: function(msg) {
-                    Ext.Msg.alert("Problem with " + this.xtype, msg);
-                }
-            }).always(function() { 
-                me.setLoading(false); 
-            });
-        } else {
-            this._makeChart({qa:[],production:[]});
-        }
+        if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
+
+        this.setLoading("Getting defects...");
+        Deft.Chain.pipeline([
+            this._getDefectsInTimebox,
+            this._separateIntoDiscoveryLocations
+        ],this).then({
+            scope: this,
+            success: function(results){
+                this._makeChart(results);
+            },
+            failure: function(msg) {
+                Ext.Msg.alert("Problem with " + this.xtype, msg);
+            }
+        }).always(function() { 
+            me.setLoading(false); 
+        });
         
     },
     
@@ -895,7 +931,7 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
      */
     _getDefectsInTimebox: function() {
         var model = "Defect";
-        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State'];
+        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State','Project','ObjectID'];
         
         var severity_filters = Rally.data.wsapi.Filter.or([
             { property: 'Severity', value: 'Minor Problem' },
@@ -944,19 +980,35 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
     },
     
     _makeChart: function(defects_by_location){
-        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         var me = this;
-       
-        this.logger.log("adding chart", defects_by_location);
         
-        this.add({
+        var projects_by_oid = {};
+        Ext.Array.each(Ext.Array.push(defects_by_location.qa, defects_by_location.production), function(defect){
+            projects_by_oid[defect.get('Project').ObjectID] = defect.get('Project')._refObjectName;
+        });
+        
+        if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
+        
+        this.down('#chart_box').removeAll();
+        this.down('#chart_box').setLoading('Preparing Chart');
+        
+        this.logger.log('creating chart for start/end:', this.startDate, this.endDate);
+        
+        var colors = ['#fff'];
+        this.chartType = 'pie';
+        if ( me.summaryType != 'Summary' ) {
+            this.chartType = 'column';
+            colors = ['blue'];
+        }
+        
+        
+        var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
-            //loadMask: false,
+            loadMask: false,
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
-                    
                     CreationDate: {
                         '$gte': Rally.util.DateTime.toIsoString(this.startDate),
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
@@ -965,43 +1017,58 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
                     _ProjectHierarchy: this.context.getProject().ObjectID
                 },
                 compress: true,
-                fetch: ['State','Release','CreationDate'],
+                fetch: ['State','CreationDate'],
                 hydrate: ['State']
             },
-            calculatorType: 'Rally.TechnicalServices.calculator.DefectArrivalKillCalculator',
+            calculatorType: 'Rally.TechnicalServices.calculator.DefectResponseTimeCalculator',
             calculatorConfig: {
+                trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
-                allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
-                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                projectsByOID: projects_by_oid,
+                summaryType: me.summaryType,
+                chartType: me.chartType
             },
             sort: {
                 "_ValidFrom": 1
             },
-            chartColors: Rally.technicalservices.Color.colors,
-            chartConfig: this._getChartConfig()
+            chartConfig: this._getChartConfig(me.summaryType),
+            chartColors: colors
         });
+        
+        chart.on('chartRendered', function() { 
+                this.down('#chart_box').setLoading(false);
+            }, this);
     },
     
-    _getChartConfig: function() {
+    _getChartConfig: function(summary_type) {
+        if ( summary_type == "Summary" ) {
+            return this._getSummaryChartConfig();
+        } 
+        return this._getTeamChartConfig();
+    },
+    
+    _getSummaryChartConfig: function() {
         return  {
-            chart: {},
+            chart: {
+                type: 'pie'
+            },
             title: {
                 text: null
             },
             xAxis: {
-                tickmarkPlacement: 'on',
-                tickInterval: 14,
-                labels: { rotation: -65, align: 'right' }
-
+                labels: { 
+                    enabled: false
+                }
+            },
+            legend: { 
+                enabled: false
             },
             tooltip: {
-                formatter: function(){
-                    return Ext.String.format('{0}: <b>{1}</b>',this.series.name, this.y);
-                }
+                enabled: false
             },
             yAxis: {
                 title: { 
@@ -1010,15 +1077,68 @@ Ext.define('Rally.technicalservices.chart.ArrivalKill', {
                 min: 0
             },
             plotOptions: {
-                'line': {
+                'pie': {
+                    colors: ['#fff'],
+                    allowPointSelect: false,
+                    dataLabels: {
+                        distance: -100,
+                        enabled: true,
+                        style: {
+                            color: 'gray',
+                            fontSize: '25px'
+                        },
+                        formatter: function() {
+                            return Ext.util.Format.number(this.y,'0.0') + " Days";
+                        }
+                    }
+                },
+                'column': {
                     marker: { enabled: false }
                 }
+            }
+        };
+    },
+    
+    _getTeamChartConfig: function() {
+        return  {
+            
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: null
+            },
+            tooltip: {
+                formatter: function(){
+                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Ext.util.Format.number(this.point.y,'0.0'));
+                }
+            },
+            xAxis: {
+                type: 'category',
+                labels: {
+                    formatter: function(){
+                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
+                    }
+                }
+            },
+            yAxis: {
+                title: { text: 'Days'}
+            },
+            plotOptions: {
+                bar: {
+                    dataLabels: {
+                        enabled: false
+                    }
+                }
+            },
+            legend: {
+                enabled: false
             }
         };
     }
 });
 
-Ext.define("TSArrivalKill", {
+Ext.define("TSDefectResponseTime", {
     extend: 'Rally.app.TimeboxScopedApp',
     scopeType: 'release',
     supportsUnscheduled: false,
@@ -1031,19 +1151,51 @@ Ext.define("TSArrivalKill", {
             showOnlyProduction:  false
         }
     },
+    
+    layout: { type:'vbox'},
+    
+    timeboxScope: null,
 
     onScopeChange: function(timeboxScope){
-        if (this.down('tsarrivalkillchart')){
-            this.down('tsarrivalkillchart').destroy();
+        
+        this.timeboxScope = timeboxScope;
+        
+        if (!this.down('rallybutton')){
+            this.add({
+                xtype: 'rallybutton',
+                text: 'Team View',
+                cls: 'secondary rly-small',
+                listeners: {
+                    scope: this,
+                    click: this._updateView
+                }
+            });
+        }
+        
+        if (this.down('tsdefectresponsetime')){
+            this.down('tsdefectresponsetime').updateTimebox(this.timeboxScope);
+        } else {
+            this._createChart('Summary');
         }
 
+    },
+    
+    // expect type to be 'Summary' or 'Team'
+    _createChart: function(summary_type) {
+        if (this.down('tsdefectresponsetime')){
+            this.down('tsdefectresponsetime').destroy();
+        }
+        
+        this.logger.log('width', this.width, this.getWidth());
+        
         this.add({
-            xtype: 'tsarrivalkillchart',
-            timeboxScope: timeboxScope,
+            xtype: 'tsdefectresponsetime',
+            timeboxScope: this.timeboxScope,
             context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction
+            showOnlyProduction: this.showOnlyProduction,
+            summaryType: summary_type,
+            width: this.getWidth() - 25
         });
-
     },
     
     getSettingsFields: function() {
@@ -1053,10 +1205,20 @@ Ext.define("TSArrivalKill", {
                 xtype: 'rallycheckboxfield',
                 boxLabelAlign: 'after',
                 fieldLabel: '',
-                margin: '0 0 25 200',
+                margin: '0 0 25 20',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
             }
         ];
+    },
+    
+    _updateView: function(btn){
+        if (btn.text == 'Team View'){
+            btn.setText("< Back to Summary");
+            this._createChart('Team');
+        } else {
+            btn.setText("Team View");
+            this._createChart('Summary');
+        }
     },
     
     getOptions: function() {
@@ -1071,7 +1233,10 @@ Ext.define("TSArrivalKill", {
     
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
-        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{});
+        this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/defect-response-time/README.md",
+            codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/defect-response-time"
+        });
     },
     
     isExternal: function(){
@@ -1087,8 +1252,8 @@ Ext.define("TSArrivalKill", {
 });
 
             
-               Rally.launchApp('TSArrivalKill', {
-                   name: 'Arrival/Kill Rate'
+               Rally.launchApp('TSDefectResponseTime', {
+                   name: 'Defect Response Time'
                });
         });
     </script>
@@ -1111,6 +1276,15 @@ Ext.define("TSArrivalKill", {
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+
+.circle_value {
+    font-size: 250%;
+    color: white;
+}
+
+.circle_label {
+    color: white;
 }
     </style>
 

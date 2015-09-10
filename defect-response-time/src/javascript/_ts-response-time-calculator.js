@@ -1,140 +1,118 @@
- Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
-     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
+    extend: "Rally.data.lookback.calculator.TimeInStateCalculator",
 
-     config: {
+    config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
         productionDefects: [],
-        allDefects: [],
-        showOnlyProduction: false
-     },
-     
-    getDerivedFieldsOnInput: function () {
-        var me = this;
-        var killed_states = this.config.closedStateNames;
-        var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
-            return d.get('ObjectID')
-        });
-        
-        if ( me.config.showOnlyProduction) {
-            return [
-                
-                {
-                    'as': 'CreatedAfterStartFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                        );
-                    }
-                },
-                {
-                    'as': 'KilledFromProduction',
-                    'f' : function(snapshot) {
-                        return (
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                }
-            ];
-        } else {
-            return [
-                {
-                    'as': 'CreatedAfterStart',
-                    'f' : function(snapshot) {
-                        return ( 
-                            snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                },
-                {
-                    'as': 'Killed',
-                    'f' : function(snapshot) {
-                        return ( 
-                            Ext.Array.contains(killed_states,snapshot.State)
-                            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                        );
-                    }
-                }];
-        }
-    },
-     
-    getMetrics: function () {
-        var me = this;
-        if ( me.config.showOnlyProduction) {
-            return [
-                {
-                    "filterField": "CreatedAfterStartFromProduction",
-                    'as':'Arrived (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    'filterField': "KilledFromProduction",
-                    'as':'Killed (Production)',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        } else {
-            return [
-                {
-                    "filterField": "CreatedAfterStart",
-                    'as':'Arrived',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                },
-                {
-                    "filterField": "Killed",
-                    'as':'Killed',
-                    'f':'filteredCount',
-                    'filterValues':[true]
-                }
-            ];
-        }
-    },
-
-    runCalculation: function (snapshots) {
-        var chartData = this.callParent(arguments);
-        var today = Rally.util.DateTime.add(new Date(),"day",1); //include today
-        Ext.Array.each(chartData.series,function(series,idx){
-            this._removeFutureSeries(chartData, idx, this._indexOfDate(chartData,today,true));
-        },this);
-
-        return chartData;
-    },
-
-    _indexOfDate: function(chartData, date, find_next_day_if_missing ) {
-         var dateStr = Ext.Date.format(date, 'Y-m-d');
-         var categories = chartData.categories;
-         
-         var idx = Ext.Array.indexOf(categories,dateStr);
-         if ( idx > -1 ) {
-            return idx;
-         }
-         if ( find_next_day_if_missing ) {
-            var test_idx = categories.length - 1;
-            while ( test_idx > -1 ) {
-                if (categories[test_idx] > dateStr ) {
-                    break;
-                }
-                test_idx = test_idx - 1;
-            }
-            return test_idx;
-         }
-         return -1;
+        showOnlyProduction: false,
+        chartType: 'column', /* column or pie */
+        summaryType: 'Summary', // || 'Team'
+        projectsByOID: {} // required for 'Team' summaryType
     },
     
-    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
+    _isCreatedAfterStart: function(snapshot) {
+        var me = this;
         
-        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
-            var idx = cutOffIndex;
+        if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
             
-            while(idx < chartData.series[seriesIndex].data.length) {
-                chartData.series[seriesIndex].data[idx] = null;
-                idx++;
+            return 
+                snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+        }
+        return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
+
+    },
+    
+    _isResolved: function(snapshot) {
+        var me = this;
+        var killed_states = this.config.closedStateNames;
+
+        if ( me.config.showOnlyProduction) {
+            var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
+                return d.get('ObjectID')
+            });
+            
+            return (
+                Ext.Array.contains(killed_states,snapshot.State)
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+                && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
+            );
+        }
+
+        return ( 
+            Ext.Array.contains(killed_states,snapshot.State)
+            && snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate) 
+        );
+
+    },
+    
+    runCalculation: function (snapshots) {
+        var me = this;
+        
+        this.startDate = this.startDate || this._getStartDate(snapshots);
+        this.endDate = this.endDate || this._getEndDate(snapshots);
+            
+        var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
+            return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
+                 && me._isCreatedAfterStart(snapshot)
+                 && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
+        });
+        
+        var cycle_times_by_project = {};
+        var cycle_times = [];
+        
+        Ext.Array.each(final_snaps,function(snapshot){
+            var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
+            var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
+            var project_oid = snapshot.Project;
+            
+            if ( ! cycle_times_by_project[project_oid] ) {
+                cycle_times_by_project[project_oid] = [];
             }
+            
+            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
+            cycle_times.push(time_difference);
+            
+            cycle_times_by_project[project_oid].push(time_difference);
+        });
+
+        var series = [];
+        var categories = [];
+        
+        if ( me.summaryType == "Summary" ) { 
+            var average = Ext.Array.mean(cycle_times);
+            
+            if ( me.granularity == "day" ) {
+                average = average / 24;
+            }
+            series = [{name:'Average Response Time',data: [average]}];
+            
+            if ( me.chartType == "pie" ) {
+                series = [{type:'pie', data: [['average',average]] }];
+            }
+        } else {
+            var series_data = [];
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
+                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    if ( me.granularity == "day" ) {
+                        average = average / 24;
+                    }
+                    series_data.push(average);
+                    categories.push(project_name);
+                }
+            });
+            series = [{name:'Average Resolution Time', data:series_data}];
+        }
+        
+        console.log('series: ', series);
+        
+        return {
+            categories: categories,
+            series: series
         }
     }
     
