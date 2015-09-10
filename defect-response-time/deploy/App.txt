@@ -3,11 +3,11 @@
 <head>
     <title>Defect Response Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 10 2015 12:25:59 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 10 2015 16:14:54 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 10 2015 12:25:59 GMT-0700 (PDT)";
-        var CHECKSUM = 36296798602;
+        var APP_BUILD_DATE = "Thu Sep 10 2015 16:14:54 GMT-0700 (PDT)";
+        var CHECKSUM = 34555080158;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -693,7 +693,6 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
     config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
         productionDefects: [],
-        allDefects: [],
         showOnlyProduction: false,
         chartType: 'column', /* column or pie */
         summaryType: 'Summary', // || 'Team'
@@ -747,38 +746,62 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
             return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
+                 && me._isCreatedAfterStart(snapshot)
                  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         
-        var cycle_times = Ext.Array.map(final_snaps,function(snapshot){
-            console.log(snapshot._ValidFrom, snapshot.CreationDate);
+        var cycle_times_by_project = {};
+        var cycle_times = [];
+        
+        Ext.Array.each(final_snaps,function(snapshot){
             var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
             var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
+            var project_oid = snapshot.Project;
             
-            return Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,me.granularity);
-        });
-        
-        var average = Ext.Array.mean(cycle_times);
-        
-        var series = [{name:'Average Response Time',data: [average]}];
-        
-        if ( me.chartType == "pie" ) {
-            series = [{type:'pie', data: [['average',average]] }];
-        }
-        return {
-            series: series
-        }
-    },
-    
-    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
-        
-        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
-            var idx = cutOffIndex;
-            
-            while(idx < chartData.series[seriesIndex].data.length) {
-                chartData.series[seriesIndex].data[idx] = null;
-                idx++;
+            if ( ! cycle_times_by_project[project_oid] ) {
+                cycle_times_by_project[project_oid] = [];
             }
+            
+            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
+            cycle_times.push(time_difference);
+            
+            cycle_times_by_project[project_oid].push(time_difference);
+        });
+
+        var series = [];
+        var categories = [];
+        
+        if ( me.summaryType == "Summary" ) { 
+            var average = Ext.Array.mean(cycle_times);
+            
+            if ( me.granularity == "day" ) {
+                average = average / 24;
+            }
+            series = [{name:'Average Response Time',data: [average]}];
+            
+            if ( me.chartType == "pie" ) {
+                series = [{type:'pie', data: [['average',average]] }];
+            }
+        } else {
+            var series_data = [];
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
+                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    if ( me.granularity == "day" ) {
+                        average = average / 24;
+                    }
+                    series_data.push(average);
+                    categories.push(project_name);
+                }
+            });
+            series = [{name:'Average Resolution Time', data:series_data}];
+        }
+        
+        console.log('series: ', series);
+        
+        return {
+            categories: categories,
+            series: series
         }
     }
     
@@ -971,6 +994,14 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
         
         this.logger.log('creating chart for start/end:', this.startDate, this.endDate);
         
+        var colors = ['#fff'];
+        this.chartType = 'pie';
+        if ( me.summaryType != 'Summary' ) {
+            this.chartType = 'column';
+            colors = ['blue'];
+        }
+        
+        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -993,126 +1024,34 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             calculatorConfig: {
                 trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
-                allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
                 startDate: me.startDate,
                 endDate: me.endDate,
-                granularity: 'hour',
-                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+                granularity: 'day',
                 projectsByOID: projects_by_oid,
                 summaryType: me.summaryType,
-                chartType: 'pie'
+                chartType: me.chartType
             },
             sort: {
                 "_ValidFrom": 1
             },
-            chartConfig: this._getChartConfig(),
-            chartColors: ['#fff']
+            chartConfig: this._getChartConfig(me.summaryType),
+            chartColors: colors
         });
         
         chart.on('chartRendered', function() { 
                 this.down('#chart_box').setLoading(false);
             }, this);
-        if (this.summaryType == "Team") {
-            chart.on('chartRendered', this._splitChartIntoSparkLines,this,{ single: true});
-        }
     },
     
-    _splitChartIntoSparkLines: function(chart) {
-        var serieses = chart.chartData.series;
-        var categories = chart.chartData.categories;
-        
-        chart.hide();
-        
-        var data = Ext.Array.map(serieses, function(series){
-            return { Name: series.name, Data: series.data }
-        });
-        
-        var store =  Ext.create('Rally.data.custom.Store', {
-            data: data,
-            sorters: [{property:'Name', direction:'ASC'}]
-        });
-               
-        this.grid = this.down('#chart_box').add({
-            xtype:'rallygrid',
-            store: store,
-            height: this.height,
-            showPagingToolbar: false,
-            columnCfgs: [
-                {text: 'Name', flex: 1, dataIndex: 'Name'},
-                {text: 'Trend', dataIndex: 'Data', width: this._getTrendWidth(), padding: 0, margin: 0, renderer: function(value, meta, record){
-                    return '<div class="chart-target" style="height:25px;"></div>';
-                }}
-            ]
-        });
-
-        this.grid.on('viewready', this._renderSparkLines, this);
-        
+    _getChartConfig: function(summary_type) {
+        if ( summary_type == "Summary" ) {
+            return this._getSummaryChartConfig();
+        } 
+        return this._getTeamChartConfig();
     },
     
-    _getTrendWidth: function() {
-        var trend_width = this.width / 2;
-        if ( trend_width < 100 ) { trend_width = 100; }
-        return trend_width;
-    },
-    
-    _renderSparkLines: function() {
-        var store = this.grid.store;
-        for ( var i=0; i< store.getTotalCount(); i++ ) {
-            var record = store.getAt(i);
-            var holder = Ext.DomQuery.select('.chart-target', this.grid.view.getNode(i));
-            if ( !Ext.isEmpty(record) && holder.length) {
-                var columnElement = holder[0];
-                columnElement.innerHTML = '';
-                
-                var columnValue = record.get('Data');
-                
-                var series = [{
-                    name:record.get('Name'),
-                    data:record.get('Data'),
-                    marker: { enabled: false }
-                }];
-                
-                Ext.create('Rally.ui.chart.Chart',{
-                    width: this._getTrendWidth(),
-                    chartData: {
-                        series: series
-                    },
-                    chartConfig: {
-                        chart: {
-                            type:'area',
-                            style: {
-                                overflow: 'visible'
-                            },
-                            margin: [2,0,2,0],
-                            height: 25
-                        },
-                        title: {
-                            text: ''
-                        },
-                        credits: { enabled: false },
-                        xAxis: { 
-                            labels:{ enabled: false },
-                            title: { text: null },
-                            tickLength: 0
-                        },
-                        yAxis: { 
-                            labels:{ enabled: false },
-                            title: { text:  null },
-                            endOnTick: false,
-                            startOnTick: false,
-                            tickPositions: [0]
-                        },
-                        legend: { enabled: false },
-                        tooltip: { enabled: false }
-                    },
-                    renderTo: columnElement
-                });
-            }
-        }
-    },
-    
-    _getChartConfig: function() {
+    _getSummaryChartConfig: function() {
         return  {
             chart: {
                 type: 'pie'
@@ -1148,12 +1087,52 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                             color: 'gray',
                             fontSize: '25px'
                         },
-                        format: '{point.y:.1f}<br/>Hours'
+                        formatter: function() {
+                            return Ext.util.Format.number(this.y,'0.0') + " Days";
+                        }
                     }
                 },
                 'column': {
                     marker: { enabled: false }
                 }
+            }
+        };
+    },
+    
+    _getTeamChartConfig: function() {
+        return  {
+            
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: null
+            },
+            tooltip: {
+                formatter: function(){
+                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Ext.util.Format.number(this.point.y,'0.0'));
+                }
+            },
+            xAxis: {
+                type: 'category',
+                labels: {
+                    formatter: function(){
+                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
+                    }
+                }
+            },
+            yAxis: {
+                title: { text: 'Days'}
+            },
+            plotOptions: {
+                bar: {
+                    dataLabels: {
+                        enabled: false
+                    }
+                }
+            },
+            legend: {
+                enabled: false
             }
         };
     }
@@ -1226,7 +1205,7 @@ Ext.define("TSDefectResponseTime", {
                 xtype: 'rallycheckboxfield',
                 boxLabelAlign: 'after',
                 fieldLabel: '',
-                margin: '0 0 25 200',
+                margin: '0 0 25 20',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
             }
         ];

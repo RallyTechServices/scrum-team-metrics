@@ -65,7 +65,7 @@ Ext.define("TSDefectResponseTime", {
                 xtype: 'rallycheckboxfield',
                 boxLabelAlign: 'after',
                 fieldLabel: '',
-                margin: '0 0 25 200',
+                margin: '0 0 25 20',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
             }
         ];

@@ -4,7 +4,6 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
     config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
         productionDefects: [],
-        allDefects: [],
         showOnlyProduction: false,
         chartType: 'column', /* column or pie */
         summaryType: 'Summary', // || 'Team'
@@ -58,38 +57,62 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
             return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
+                 && me._isCreatedAfterStart(snapshot)
                  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         
-        var cycle_times = Ext.Array.map(final_snaps,function(snapshot){
-            console.log(snapshot._ValidFrom, snapshot.CreationDate);
+        var cycle_times_by_project = {};
+        var cycle_times = [];
+        
+        Ext.Array.each(final_snaps,function(snapshot){
             var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
             var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
+            var project_oid = snapshot.Project;
             
-            return Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,me.granularity);
-        });
-        
-        var average = Ext.Array.mean(cycle_times);
-        
-        var series = [{name:'Average Response Time',data: [average]}];
-        
-        if ( me.chartType == "pie" ) {
-            series = [{type:'pie', data: [['average',average]] }];
-        }
-        return {
-            series: series
-        }
-    },
-    
-    _removeFutureSeries: function (chartData, seriesIndex, cutOffIndex ) { 
-        
-        if(chartData.series[seriesIndex].data.length > cutOffIndex && cutOffIndex > -1) {
-            var idx = cutOffIndex;
-            
-            while(idx < chartData.series[seriesIndex].data.length) {
-                chartData.series[seriesIndex].data[idx] = null;
-                idx++;
+            if ( ! cycle_times_by_project[project_oid] ) {
+                cycle_times_by_project[project_oid] = [];
             }
+            
+            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
+            cycle_times.push(time_difference);
+            
+            cycle_times_by_project[project_oid].push(time_difference);
+        });
+
+        var series = [];
+        var categories = [];
+        
+        if ( me.summaryType == "Summary" ) { 
+            var average = Ext.Array.mean(cycle_times);
+            
+            if ( me.granularity == "day" ) {
+                average = average / 24;
+            }
+            series = [{name:'Average Response Time',data: [average]}];
+            
+            if ( me.chartType == "pie" ) {
+                series = [{type:'pie', data: [['average',average]] }];
+            }
+        } else {
+            var series_data = [];
+            Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
+                if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
+                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    if ( me.granularity == "day" ) {
+                        average = average / 24;
+                    }
+                    series_data.push(average);
+                    categories.push(project_name);
+                }
+            });
+            series = [{name:'Average Resolution Time', data:series_data}];
+        }
+        
+        console.log('series: ', series);
+        
+        return {
+            categories: categories,
+            series: series
         }
     }
     

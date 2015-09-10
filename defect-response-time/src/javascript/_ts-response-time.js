@@ -186,6 +186,14 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
         
         this.logger.log('creating chart for start/end:', this.startDate, this.endDate);
         
+        var colors = ['#fff'];
+        this.chartType = 'pie';
+        if ( me.summaryType != 'Summary' ) {
+            this.chartType = 'column';
+            colors = ['blue'];
+        }
+        
+        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -208,126 +216,34 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             calculatorConfig: {
                 trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
-                allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
                 startDate: me.startDate,
                 endDate: me.endDate,
-                granularity: 'hour',
-                workDays: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+                granularity: 'day',
                 projectsByOID: projects_by_oid,
                 summaryType: me.summaryType,
-                chartType: 'pie'
+                chartType: me.chartType
             },
             sort: {
                 "_ValidFrom": 1
             },
-            chartConfig: this._getChartConfig(),
-            chartColors: ['#fff']
+            chartConfig: this._getChartConfig(me.summaryType),
+            chartColors: colors
         });
         
         chart.on('chartRendered', function() { 
                 this.down('#chart_box').setLoading(false);
             }, this);
-        if (this.summaryType == "Team") {
-            chart.on('chartRendered', this._splitChartIntoSparkLines,this,{ single: true});
-        }
     },
     
-    _splitChartIntoSparkLines: function(chart) {
-        var serieses = chart.chartData.series;
-        var categories = chart.chartData.categories;
-        
-        chart.hide();
-        
-        var data = Ext.Array.map(serieses, function(series){
-            return { Name: series.name, Data: series.data }
-        });
-        
-        var store =  Ext.create('Rally.data.custom.Store', {
-            data: data,
-            sorters: [{property:'Name', direction:'ASC'}]
-        });
-               
-        this.grid = this.down('#chart_box').add({
-            xtype:'rallygrid',
-            store: store,
-            height: this.height,
-            showPagingToolbar: false,
-            columnCfgs: [
-                {text: 'Name', flex: 1, dataIndex: 'Name'},
-                {text: 'Trend', dataIndex: 'Data', width: this._getTrendWidth(), padding: 0, margin: 0, renderer: function(value, meta, record){
-                    return '<div class="chart-target" style="height:25px;"></div>';
-                }}
-            ]
-        });
-
-        this.grid.on('viewready', this._renderSparkLines, this);
-        
+    _getChartConfig: function(summary_type) {
+        if ( summary_type == "Summary" ) {
+            return this._getSummaryChartConfig();
+        } 
+        return this._getTeamChartConfig();
     },
     
-    _getTrendWidth: function() {
-        var trend_width = this.width / 2;
-        if ( trend_width < 100 ) { trend_width = 100; }
-        return trend_width;
-    },
-    
-    _renderSparkLines: function() {
-        var store = this.grid.store;
-        for ( var i=0; i< store.getTotalCount(); i++ ) {
-            var record = store.getAt(i);
-            var holder = Ext.DomQuery.select('.chart-target', this.grid.view.getNode(i));
-            if ( !Ext.isEmpty(record) && holder.length) {
-                var columnElement = holder[0];
-                columnElement.innerHTML = '';
-                
-                var columnValue = record.get('Data');
-                
-                var series = [{
-                    name:record.get('Name'),
-                    data:record.get('Data'),
-                    marker: { enabled: false }
-                }];
-                
-                Ext.create('Rally.ui.chart.Chart',{
-                    width: this._getTrendWidth(),
-                    chartData: {
-                        series: series
-                    },
-                    chartConfig: {
-                        chart: {
-                            type:'area',
-                            style: {
-                                overflow: 'visible'
-                            },
-                            margin: [2,0,2,0],
-                            height: 25
-                        },
-                        title: {
-                            text: ''
-                        },
-                        credits: { enabled: false },
-                        xAxis: { 
-                            labels:{ enabled: false },
-                            title: { text: null },
-                            tickLength: 0
-                        },
-                        yAxis: { 
-                            labels:{ enabled: false },
-                            title: { text:  null },
-                            endOnTick: false,
-                            startOnTick: false,
-                            tickPositions: [0]
-                        },
-                        legend: { enabled: false },
-                        tooltip: { enabled: false }
-                    },
-                    renderTo: columnElement
-                });
-            }
-        }
-    },
-    
-    _getChartConfig: function() {
+    _getSummaryChartConfig: function() {
         return  {
             chart: {
                 type: 'pie'
@@ -363,12 +279,52 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                             color: 'gray',
                             fontSize: '25px'
                         },
-                        format: '{point.y:.1f}<br/>Hours'
+                        formatter: function() {
+                            return Ext.util.Format.number(this.y,'0.0') + " Days";
+                        }
                     }
                 },
                 'column': {
                     marker: { enabled: false }
                 }
+            }
+        };
+    },
+    
+    _getTeamChartConfig: function() {
+        return  {
+            
+            chart: {
+                type: 'bar'
+            },
+            title: {
+                text: null
+            },
+            tooltip: {
+                formatter: function(){
+                    return Ext.String.format('{0}<br/>{1}: <b>{2}</b>',this.x, this.series.name, Ext.util.Format.number(this.point.y,'0.0'));
+                }
+            },
+            xAxis: {
+                type: 'category',
+                labels: {
+                    formatter: function(){
+                        return Ext.String.format('<span title="{0}">{1}</span>',this.value, Ext.util.Format.ellipsis(this.value, 15));
+                    }
+                }
+            },
+            yAxis: {
+                title: { text: 'Days'}
+            },
+            plotOptions: {
+                bar: {
+                    dataLabels: {
+                        enabled: false
+                    }
+                }
+            },
+            legend: {
+                enabled: false
             }
         };
     }

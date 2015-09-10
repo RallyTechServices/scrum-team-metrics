@@ -1,6 +1,6 @@
 #Defect Resolution Time
 
-This chart shows the average rate of response over time for defects found during
+This chart shows the average rate of resolution over time for defects found during
 a release timebox.  It does not care whether defects are associated with the release
 directly, only that they were created during the time period.
 
@@ -16,6 +16,8 @@ defects or only defects associated with production via a special web link field.
 one value in the incidents field, which is a web link field.
 * Because it's a web link field, we can't query on it and the data isn't in 
 lookback, so we have to go get all the defects first.
+* Although the display of resolution time is in days, it is calculated in hours
+then divided by 24 so that we can have partial days.
 
 
 ### First Load
