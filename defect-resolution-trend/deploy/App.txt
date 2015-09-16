@@ -3,11 +3,11 @@
 <head>
     <title>Defect Resolution Trend</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 16 2015 16:23:01 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Sep 16 2015 16:38:14 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 16 2015 16:23:01 GMT-0700 (PDT)";
-        var CHECKSUM = 39979172800;
+        var APP_BUILD_DATE = "Wed Sep 16 2015 16:38:14 GMT-0700 (PDT)";
+        var CHECKSUM = 40575014822;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -689,6 +689,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
 
 Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator", {
     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+    logger: new Rally.technicalservices.Logger(),
 
     config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
@@ -701,15 +702,16 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
     
     _isCreatedAfterStart: function(snapshot) {
         var me = this;
-        
+
         if ( me.config.showOnlyProduction) {
             var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
                 return d.get('ObjectID')
             });
             
-            return 
+            return (
                 snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+            );
         }
         return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
 
@@ -771,6 +773,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
                 }
             ]);
         } else {
+            
             Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
                 Ext.Array.push(derived_fields, [
                     {
@@ -1306,7 +1309,7 @@ Ext.define("TSDefectResolutionTrend", {
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction,
+            showOnlyProduction: this.getSetting('showOnlyProduction'),
             summaryType: summary_type,
             width: this.getWidth() - 25
         });
@@ -1347,9 +1350,14 @@ Ext.define("TSDefectResolutionTrend", {
     
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
+        var production_string = "";
+        if ( this.getSetting('showOnlyProduction') ) {
+            production_string = "This is configured to show only production defects.";
+        }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
             informationHtml: "The trend shows the difference between creation and resolution over time. A flat trend indicates " +
-                    "that the same number of defects are being created as are being resolved.",
+                    "that the same number of defects are being created as are being resolved. " +
+                    production_string,
             readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/defect-resolution-trend/README.md",
             codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/defect-resolution-trend"
         });

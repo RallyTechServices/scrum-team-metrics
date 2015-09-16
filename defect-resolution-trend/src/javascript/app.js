@@ -54,7 +54,7 @@ Ext.define("TSDefectResolutionTrend", {
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction,
+            showOnlyProduction: this.getSetting('showOnlyProduction'),
             summaryType: summary_type,
             width: this.getWidth() - 25
         });

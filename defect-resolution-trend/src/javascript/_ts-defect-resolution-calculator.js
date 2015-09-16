@@ -1,5 +1,6 @@
 Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator", {
     extend: "Rally.data.lookback.calculator.TimeSeriesCalculator",
+    logger: new Rally.technicalservices.Logger(),
 
     config: {
         closedStateNames: ['Fixed','Closed','Junked','Duplicate'],
@@ -12,15 +13,16 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
     
     _isCreatedAfterStart: function(snapshot) {
         var me = this;
-        
+
         if ( me.config.showOnlyProduction) {
             var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
                 return d.get('ObjectID')
             });
             
-            return 
+            return (
                 snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+            );
         }
         return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
 
@@ -82,6 +84,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
                 }
             ]);
         } else {
+            
             Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
                 Ext.Array.push(derived_fields, [
                     {
