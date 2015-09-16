@@ -8,7 +8,7 @@ Ext.define("TSDefectResolutionTrend", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            showOnlyProduction:  false
+            showOnlyProduction:  true
         }
     },
     
@@ -96,6 +96,8 @@ Ext.define("TSDefectResolutionTrend", {
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            informationHtml: "The trend shows the difference between creation and resolution over time. A flat trend indicates " +
+                    "that the same number of defects are being created as are being resolved.",
             readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/defect-resolution-trend/README.md",
             codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/defect-resolution-trend"
         });

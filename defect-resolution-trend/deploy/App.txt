@@ -3,11 +3,11 @@
 <head>
     <title>Defect Resolution Trend</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 09 2015 16:03:37 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Sep 16 2015 16:23:01 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 09 2015 16:03:37 GMT-0700 (PDT)";
-        var CHECKSUM = 39499933869;
+        var APP_BUILD_DATE = "Wed Sep 16 2015 16:23:01 GMT-0700 (PDT)";
+        var CHECKSUM = 39979172800;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1260,7 +1260,7 @@ Ext.define("TSDefectResolutionTrend", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            showOnlyProduction:  false
+            showOnlyProduction:  true
         }
     },
     
@@ -1348,6 +1348,8 @@ Ext.define("TSDefectResolutionTrend", {
     _launchInfo: function() {
         if ( this.about_dialog ) { this.about_dialog.destroy(); }
         this.about_dialog = Ext.create('Rally.technicalservices.InfoLink',{
+            informationHtml: "The trend shows the difference between creation and resolution over time. A flat trend indicates " +
+                    "that the same number of defects are being created as are being resolved.",
             readmeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/blob/master/defect-resolution-trend/README.md",
             codeUrl: "https://github.com/RallyTechServices/scrum-team-metrics/tree/master/defect-resolution-trend"
         });
@@ -1391,6 +1393,7 @@ Ext.define("TSDefectResolutionTrend", {
     margin-right: 5px;
     cursor: pointer;
 }
+
     </style>
 
 </head>

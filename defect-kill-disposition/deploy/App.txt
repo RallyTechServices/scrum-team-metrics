@@ -3,11 +3,11 @@
 <head>
     <title>Kill Disposition</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Aug 27 2015 14:54:30 GMT-0700 (PDT) -->
+    <!--  Build Date: Wed Sep 16 2015 16:15:39 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Aug 27 2015 14:54:30 GMT-0700 (PDT)";
-        var CHECKSUM = 23607422836;
+        var APP_BUILD_DATE = "Wed Sep 16 2015 16:15:39 GMT-0700 (PDT)";
+        var CHECKSUM = 32412767683;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -29,7 +29,9 @@ Ext.define('Rally.technicalservices.InfoLink',{
      * to add a description of the app's use or functionality)
      */
     informationHtml: null,
-    
+    readmeUrl: null,
+    codeUrl: null,
+
     /**
      * 
      * cfg {String} title
@@ -118,27 +120,44 @@ Ext.define('Rally.technicalservices.InfoLink',{
         }
         this.callParent(arguments);
     },
-    
+
+    _getInformationalHtml: function(){
+        var html = '';
+
+        if (this.informationHtml){
+            html += this.informationHtml + '<br/><br/>';
+        }
+
+        if (this.readmeUrl){
+            html += Ext.String.format("For details about the data in this app, please refer to the <a href=\"{0}\" target=\"_blank\">README file</a>.<br/><br/>", this.readmeUrl);
+        }
+
+        if (this.codeUrl){
+            html += Ext.String.format("Get the code <a href=\"{0}\" target=\"_blank\">here.</a><br/><br/>", this.codeUrl);
+        }
+        return html;
+    },
     beforeRender: function() {
-        var me = this;
+        var me = this,
+            informational_html = this._getInformationalHtml();
         this.callParent(arguments);
 
-        if (this.informationHtml) {
+        if (informational_html && informational_html.length > 0) {
             this.addDocked({
                 xtype: 'component',
                 componentCls: 'intro-panel',
                 padding: 2,
-                html: this.informationHtml
+                html: informational_html
             });
         }
-        
+
         this.addDocked({
             xtype:'container',
             cls: 'build-info',
             padding: 2,
-            html:"This app was created by the Rally Technical Services Team.  <br/><br/>For details about the data in this app, please refer to the <a href=\"https://github.com/RallyTechServices/scrum-team-metrics/blob/master/README.md\" target=\"_blank\">README file</a>."
+            html:"This app was created by the Rally Technical Services Team."
         });
-        
+
         if ( APP_BUILD_DATE ) {
             this.addDocked({
                 xtype:'container',
@@ -189,9 +208,13 @@ Ext.define('Rally.technicalservices.Color',{
     classificationHighRisk: 'red',
     classificationModerateRisk: 'yellow',
     classificationOther: '#f6f6f6',
+    classificationNotStarted: '#ffffff',
+    classificationCompleted: '#848689',
 
     storiesAcceptedCount:  '#145499',
     storiesTotalCount: '#f6f6f6',
+    storiesCommitted: '#8bbc21',
+    storiesNonCommitted: '#f28f43',
 
 
     colors: ['#2f7ed8', '#8bbc21', '#910000', '#492970', '#f15c80', '#7cb5ec',
@@ -233,6 +256,177 @@ Ext.define('Rally.technicalservices.Color',{
     ]
 
 
+});
+
+Ext.define('Rally.technicalservices.MungingToolbox', {
+    singleton: true,
+    getPieSeriesData: function(records, pie_field){
+        var pie_hash = Rally.technicalservices.MungingToolbox.getCountByField(records, pie_field),
+            data = [];
+
+        var keys = _.keys(pie_hash);
+        keys = Ext.Array.sort(keys);
+
+        _.each(keys, function(key){
+            data.push({
+                name: key,
+                y: pie_hash[key] || 0
+            });
+        });
+        return data;
+
+    },
+    getCountByField: function(records, field){
+        var hash = {};
+
+        _.each(records, function(r){
+            var val = r.get(field);
+            if (val){
+                if (hash[val] == undefined){
+                    hash[val] = 0;
+                }
+                hash[val] ++;
+            }
+        });
+        return hash;
+    }
+});
+
+Ext.define('Rally.technicalservices.DataPopover', {
+    alias: 'widget.tsdatapopover',
+    extend: 'Rally.ui.dialog.Dialog',
+
+    id: 'grid-popover',
+    cls: 'grid-popover',
+
+    maxWidth: 400,
+    maxHeight: 300,
+
+    layout: 'fit',
+
+    autoShow: true,
+    componentCls: 'rly-popover dark-container',
+    header: true,
+    preventFocusOnActivate: true,
+    shouldHidePopoverOnBodyClick: false,
+    shouldHidePopoverOnIframeClick: false,
+    autoCenter: false,
+    closable: true,
+    shadow: false,
+
+    /**
+     * @cfg {Ext.Element} target (Required)
+     * The default element that the popover should be aligned to when positioned
+     */
+    target: undefined,
+
+    /**
+     * @cfg {String} targetSelector
+     * The selector for target to protect in the case of the target being removed from the dom i.e. grid refresh
+     */
+    targetSelector: undefined,
+
+    /**
+     * @cfg {String} targetTriggeredCls
+     * The class to add to the target when the popover is being displayed
+     */
+    targetTriggeredCls: undefined,
+
+    /**
+     * @cfg {Ext.Component} owner
+     * The Ext component that owns this popover. This is useful for doing .up() component queries or tying data requests to the original component instead of the popover component
+     */
+    owner: undefined,
+
+    /**
+     * @cfg {String|Array|Function} placement
+     * How to position the popover -  right | left | top | bottom
+     * Can be a string if you only want to allow one position, an array of strings if you want to allow multiple, or a function to determine which ones you want and return the string or array of strings
+     * The popover will use this value as a preference choosing the first placeable value first
+     */
+    placement: undefined,
+
+    /**
+     * @cfg Array offsetFromTarget
+     * Offset (Object) x and y offset positions of popover when on top, right, bottom and left
+     */
+    offsetFromTarget: [
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0},
+        {x: 0, y: 0}
+    ],
+
+    /**
+     * @cfg Array viewportPadding
+     * Offset (Array) amounts from Viewport edge - top | right | bottom | left
+     * when specified, the popover will be shifted within the viewport (plus any offset)
+     */
+    viewportPadding: [0,0,0,0],
+
+    /**
+     * @cfg Array targetPosition
+     * Position (String) for popover's target when on top, right, bottom and left
+     */
+    targetPosition: ['b-t','l-r','t-b','r-l'],
+
+    /**
+     * @cfg Array chevronPosition
+     * Position (String) for popover's chevron when on top, right, bottom and left
+     */
+    chevronPosition: ['t-b','r-l','b-t','l-r'],
+
+    /**
+     * @cfg Array chevronOffset
+     * Offset (Object) x and y offset positions of chevron when on top, right, bottom and left
+     */
+    chevronOffset: [
+        {x: 0, y: -14},
+        {x: 14, y: 0},
+        {x: 0, y: 14},
+        {x: -8, y: 0}
+    ],
+
+    /**
+     * @cfg Boolean showChevron
+     * Set to false to not show the chevron when displaying the popover
+     */
+    showChevron: true,
+
+    constructor: function(config) {
+        this.title = config.title || '';
+        var filters = [];
+        _.each(config.oids, function(oid){
+            filters.push({
+                property: 'ObjectID',
+                value: oid
+            });
+        });
+        filters= Rally.data.wsapi.Filter.or(filters);
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            model: config.modelName,
+            fetch: config.fetch,
+            enablePostGet: true,
+            filters: filters,
+            pageSize: Math.max(config.oids.length, 200),
+            limit: config.oids.length
+        });
+        store.load();
+
+        var items = [{
+            xtype: 'rallygrid',
+            columnCfgs: config.fetch,
+            store: store,
+            showPagingToolbar: config.oids.length > 200,
+            showRowActionsColumn: false,
+            enableBulkEdit: false
+        }];
+
+        config.items = Ext.merge(items, config.items);
+
+        this.callParent(arguments);
+    }
 });
 
 Ext.define('Rally.technicalservices.LookbackToolbox',{
@@ -414,6 +608,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         });
         return deferred;
     },
+    
     fetchWsapiRecords: function(model, query_filters, fetch_fields){
         var deferred = Ext.create('Deft.Deferred');
 
@@ -469,7 +664,7 @@ Ext.define('Rally.technicalservices.WsapiToolbox',{
         return deferred;
     },
     
-    _fetchAllowedValues: function(model,field_name) {
+    fetchAllowedValues: function(model,field_name) {
         var deferred = Ext.create('Deft.Deferred');
 
         Rally.data.ModelFactory.getModel({
