@@ -13,7 +13,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
     
     _isCreatedAfterStart: function(snapshot) {
         var me = this;
-
+        
         if ( me.config.showOnlyProduction) {
             var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
                 return d.get('ObjectID')

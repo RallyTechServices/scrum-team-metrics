@@ -3,11 +3,11 @@
 <head>
     <title>Defect Resolution Trend</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Sep 16 2015 16:38:14 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 17 2015 16:32:41 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Sep 16 2015 16:38:14 GMT-0700 (PDT)";
-        var CHECKSUM = 40575014822;
+        var APP_BUILD_DATE = "Thu Sep 17 2015 16:32:41 GMT-0700 (PDT)";
+        var CHECKSUM = 47034550814;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -586,6 +586,90 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
 });
 
 
+/*
+ * create a form field thing.  
+ */
+
+Ext.define('Rally.technicalservices.MultiStateComboBox',{
+    alias: 'widget.multistatecombo',
+    extend: 'Ext.form.FieldContainer',
+
+    mixins: {
+        field: 'Ext.form.field.Field'
+    },
+    
+    cls: 'multistate',
+    
+    config: {
+        /**
+         * @cfg {String}
+         * The label for the field to be passed through to the combobox
+         */
+        fieldLabel: '',
+        
+        value: undefined
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.mixins.field.initField.call(this);
+        
+        var me = this;
+        this.add([{
+            xtype: 'rallycombobox',
+            name: 'statefield',
+            plugins: ['rallyfieldvalidationui'],
+            multiSelect: true,
+            emptyText: 'Choose...',
+            displayField: 'name',
+            valueField: 'value',
+            width: this.width,
+            editable: false,
+            submitValue: false,
+            storeType: 'Ext.data.Store',
+            storeConfig: {
+                remoteFilter: false,
+                fields: ['name', 'value'],
+                data: []
+            },
+            listeners: { 
+                'change': function(cb,new_value, old_value){
+                    me.state_value = new_value;
+                }
+            }
+        }]);
+        
+        this._loadStates();
+    },
+    
+    _loadStates: function() {
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues("Defect","State").then({
+            scope: this,
+            success: function(state_names) {
+                
+                var states = Ext.Array.map(state_names,function(state_name){
+                    return { 'name': state_name, 'value': state_name }
+                });
+                
+                var combobox = this.down('rallycombobox');
+                combobox.getStore().loadData(states);
+
+                combobox.setValue(this.getValue());
+                this.fireEvent('ready',this);
+                
+            },
+            failure: function(msg) { 
+                Ext.Msg.alert('Problem Retrieving States', msg);
+            }
+        });
+    },
+    
+    getSubmitData: function() {
+        var data = {};
+        data[this.name] = this.state_value;
+        return data;
+    }
+});
 Ext.define('Rally.technicalservices.WsapiToolbox',{
     singleton: true,
     fetchWsapiCount: function(model, query_filters){
@@ -702,7 +786,7 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResolutionTrendCalculator",
     
     _isCreatedAfterStart: function(snapshot) {
         var me = this;
-
+        
         if ( me.config.showOnlyProduction) {
             var production_defect_oids = Ext.Array.map(this.config.productionDefects,function(d){
                 return d.get('ObjectID')
@@ -909,6 +993,12 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
          * Show only production defects (defects associated with an incident)
          */
         showOnlyProduction: false,
+        
+        /**
+         * @cfg [{Boolean}] 
+         * State names to include in the definition of 'Closed'
+         */
+        closedStateNames: ['Closed'],
         /**
          * 
          * @cfg {String}
@@ -1098,6 +1188,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
                 productionDefects: defects_by_location.production,
                 allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
+                closedStateNames: me.closedStateNames,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
@@ -1263,9 +1354,12 @@ Ext.define("TSDefectResolutionTrend", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            showOnlyProduction:  true
+            showOnlyProduction:  true,
+            closedStateNames: ['Fixed']
         }
     },
+    
+    summaryType: 'Summary',
     
     layout: { type:'vbox'},
     
@@ -1276,7 +1370,9 @@ Ext.define("TSDefectResolutionTrend", {
         this.timeboxScope = timeboxScope;
         
         if (!this.down('rallybutton')){
-            this.add({
+            var container = this.add({xtype:'container', layout: { type:'hbox'}, width: this.getWidth() - 25 });
+            
+            container.add({
                 xtype: 'rallybutton',
                 text: 'Team View',
                 cls: 'secondary rly-small',
@@ -1285,6 +1381,10 @@ Ext.define("TSDefectResolutionTrend", {
                     click: this._updateView
                 }
             });
+            
+            container.add({xtype:'container', flex: 1});
+            
+            container.add({xtype:'container', itemId: 'state_box', tpl:"<tpl>Resolved States: {closedStates}</tpl>" });
         }
         
         if ( this.down('tsdefectresolutiontrendchart') ) {
@@ -1298,43 +1398,64 @@ Ext.define("TSDefectResolutionTrend", {
     },
     
     // expect type to be 'Summary' or 'Team'
-    _createChart: function(summary_type) {
+    _createChart: function() {
         if (this.down('tsdefectresolutiontrendchart')){
             this.down('tsdefectresolutiontrendchart').destroy();
         }
         
-        this.logger.log('width', this.width, this.getWidth());
+        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
         
+        if ( !Ext.isArray(this.getSetting('closedStateNames') ) ) {
+            var settings = this.getSettings();
+            settings.closedStateNames = this.getSetting('closedStateNames').split(',');
+            this.setSettings(settings);
+        }
+
         this.add({
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
             showOnlyProduction: this.getSetting('showOnlyProduction'),
-            summaryType: summary_type,
+            closedStateNames: this.getSetting('closedStateNames'),
+            summaryType: this.summaryType,
             width: this.getWidth() - 25
         });
     },
     
     getSettingsFields: function() {
+        var me = this;
+        
         return [
             {
                 name: 'showOnlyProduction',
                 xtype: 'rallycheckboxfield',
                 boxLabelAlign: 'after',
                 fieldLabel: '',
-                margin: '0 0 25 200',
+                margin: '0 0 25 10',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
+            },
+            {
+                name: 'closedStateNames',
+                xtype: 'multistatecombo',
+                labelWidth: 100,
+                width: 500,
+                margin: '0 0 25 10',
+                fieldLabel: 'Resolved States',
+                readyEvent: 'ready'
             }
         ];
+                
     },
     
     _updateView: function(btn){
         if (btn.text == 'Team View'){
             btn.setText("< Back to Summary");
-            this._createChart('Team');
+            this.summaryType = 'Team';
+            this._createChart();
         } else {
             btn.setText("Team View");
-            this._createChart('Summary');
+            this.summaryType = 'Summary';
+            this._createChart();
         }
     },
     
@@ -1371,7 +1492,7 @@ Ext.define("TSDefectResolutionTrend", {
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
         Ext.apply(this, settings);
-        this.launch();
+        this._createChart();
     }
 });
 

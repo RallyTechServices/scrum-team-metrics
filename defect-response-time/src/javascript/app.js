@@ -8,7 +8,8 @@ Ext.define("TSDefectResponseTime", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            showOnlyProduction:  false
+            showOnlyProduction:  true,
+            closedStateNames: ['Fixed']
         }
     },
     
@@ -52,7 +53,8 @@ Ext.define("TSDefectResponseTime", {
             xtype: 'tsdefectresponsetime',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction,
+            closedStateNames: this.getSetting('closedStateNames'),
+            showOnlyProduction: this.getSetting('showOnlyProduction'),
             summaryType: summary_type,
             width: this.getWidth() - 25
         });

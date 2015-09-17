@@ -20,6 +20,12 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
          * Show only production defects (defects associated with an incident)
          */
         showOnlyProduction: false,
+        
+        /**
+         * @cfg [{Boolean}] 
+         * State names to include in the definition of 'Closed'
+         */
+        closedStateNames: ['Closed'],
         /**
          * 
          * @cfg {String}
@@ -217,6 +223,7 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                 trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
                 showOnlyProduction: me.showOnlyProduction,
+                closedStateNames: me.closedStateNames,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',

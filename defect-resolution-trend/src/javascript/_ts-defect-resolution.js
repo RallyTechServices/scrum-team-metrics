@@ -20,6 +20,12 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
          * Show only production defects (defects associated with an incident)
          */
         showOnlyProduction: false,
+        
+        /**
+         * @cfg [{Boolean}] 
+         * State names to include in the definition of 'Closed'
+         */
+        closedStateNames: ['Closed'],
         /**
          * 
          * @cfg {String}
@@ -209,6 +215,7 @@ Ext.define('Rally.technicalservices.chart.DefectResolutionTrend', {
                 productionDefects: defects_by_location.production,
                 allDefects: Ext.Array.merge(defects_by_location.production, defects_by_location.qa),
                 showOnlyProduction: me.showOnlyProduction,
+                closedStateNames: me.closedStateNames,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
