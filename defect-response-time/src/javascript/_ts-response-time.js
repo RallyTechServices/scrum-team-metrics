@@ -214,7 +214,7 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                     _ProjectHierarchy: this.context.getProject().ObjectID
                 },
                 compress: true,
-                fetch: ['State','CreationDate'],
+                fetch: ['State','CreationDate','FormattedID','Name'],
                 hydrate: ['State']
             },
             calculatorType: 'Rally.TechnicalServices.calculator.DefectResponseTimeCalculator',
@@ -228,7 +228,8 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                 granularity: 'day',
                 projectsByOID: projects_by_oid,
                 summaryType: me.summaryType,
-                chartType: me.chartType
+                chartType: me.chartType,
+                onPointClick: me._displayDialogForClick
             },
             sort: {
                 "_ValidFrom": 1
@@ -333,5 +334,69 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                 enabled: false
             }
         };
+    },
+    
+    // snapshots are one per defect and include a 
+    // field __cycle that was set by the calculator
+    _displayDialogForClick: function(evt,snapshots) {
+        var app = Rally.getApp();
+        
+        var point = evt.point;
+        var project_name = point.category;
+        var project_snaps = snapshots[project_name];
+        
+        
+        app.logger.log('project snaps', project_snaps);
+        
+        var store = Ext.create('Rally.data.custom.Store',{ data: project_snaps });
+        
+        var date_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return ''; }
+            return v.replace(/T.*$/,'');
+        }
+        
+        var cycle_time_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return "--"; }
+            
+            return Ext.util.Format.number(v/24,'0.0');
+        }
+        
+        var link_renderer = function(value, meta, record) {
+            var obj = { _ref: '/defect/' + record.get('ObjectID') };
+            
+            return "<a href='" + Rally.nav.Manager.getDetailUrl(obj) + "' target='_blank'>" + value + "</a>"
+        }
+        
+        Ext.create('Rally.ui.dialog.Dialog', {
+            id        : 'detailPopup',
+            title     : 'Details for ' + project_name,
+            width     : Ext.getBody().getWidth() - 25,
+            height    : Ext.getBody().getHeight() - 25,
+            closable  : true,
+           // layout    : 'fit',
+            items     : [{
+                xtype:  'container',
+                layout: { type: 'hbox'},
+                items: [
+                    { xtype: 'container', flex: 1}
+                ]
+            },
+            {
+                xtype                : 'rallygrid',
+                sortableColumns      : true,
+                showRowActionsColumn : false,
+                showPagingToolbar    : false,
+                columnCfgs           : [
+                    { dataIndex: 'FormattedID', text: 'id', renderer: link_renderer },
+                    { dataIndex: 'Name', text: 'Name', flex: 1 },
+                    { dataIndex: 'State', text: 'State' },
+                    { dataIndex: 'CreationDate', text: 'Creation Date', renderer: date_renderer },
+                    { dataIndex: '_ValidFrom', text: 'End Date', renderer: date_renderer },
+                    { dataIndex: '__cycle', text: 'Cycle Time (days)', renderer: cycle_time_renderer }
+                ],
+                store : store
+            }]
+        }).show();
+        
     }
 });

@@ -80,7 +80,8 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             if ( project_oid == 20104652093 ) {
                 console.log(snapshot.ObjectID, creation_date_in_js,state_date_in_js,time_difference);
             }
-            cycle_times_by_project[project_oid].push(time_difference);
+            snapshot.__cycle = time_difference;
+            cycle_times_by_project[project_oid].push({ cycle: time_difference, snapshot: snapshot});
         });
 
         var series = [];
@@ -99,25 +100,46 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             }
         } else {
             var series_data = [];
+            var series_snapshots = {};
+            
             Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
                 if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
-                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    var cycles = Ext.Array.pluck(cycle_times_by_project[project_oid],'cycle');
+                    var average = Ext.Array.mean(cycles);
                     if ( me.granularity == "day" ) {
                         average = average / 24;
                     }
+                    
                     series_data.push(average);
+                    
+                    series_snapshots[project_name] = Ext.Array.pluck(cycle_times_by_project[project_oid],'snapshot');
+                    
                     categories.push(project_name);
                 }
             });
-            series = [{name:'Average Resolution Time', data:series_data}];
+            
+            series = [{
+                name:'Average Resolution Time', 
+                data:series_data,
+                options: { series_snapshots:series_snapshots },
+                point: { 
+                    events: {
+                        click: function(evt) {
+                            me.onPointClick(evt,series_snapshots);
+                        }
+                    }
+                }
+            }];
         }
-        
-        console.log('series: ', series);
         
         return {
             categories: categories,
             series: series
         }
+    },
+    
+    onPointClick: function(evt) {
+        // override with configuration setting
     }
     
  });

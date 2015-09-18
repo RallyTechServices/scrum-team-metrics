@@ -10,6 +10,12 @@ items that were created before the period started, they do not count.
 There is an app setting to let the installer decide whether the app will count all
 defects or only defects associated with production via a special web link field.
 
+There another app setting to let the installer decide the definition of resolved, that is
+across one or more states.
+
+When in Team View, each bar can be clicked to pop up a table of defects that make up
+that bar -- it provides a link to the defect details page and name, dates and cycle time.
+
 ## Development Notes
 
 * Whether an item is a production item is based on the existence of at least
@@ -18,6 +24,12 @@ one value in the incidents field, which is a web link field.
 lookback, so we have to go get all the defects first.
 * Although the display of resolution time is in days, it is calculated in hours
 then divided by 24 so that we can have partial days.
+* So that the dialog box bubbles up, data is provided back from the click event on
+each chart point, so the code must override (or pass in, anyway), a function to read
+the data and do something.  
+* This app uses a new component in the settings to handle selecting multiple state values
+because the current field value dropdown doesn't play well with settings when in multiSelect
+mode.
 
 
 ### First Load

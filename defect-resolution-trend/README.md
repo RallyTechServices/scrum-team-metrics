@@ -15,13 +15,18 @@ suboptimal, a flat or declining line is better.
 There is an app setting to let the installer decide whether the app will count all
 defects or only defects associated with production via a special web link field.
 
+There another app setting to let the installer decide the definition of resolved, that is
+across one or more states.
+
 ## Development Notes
 
 * Whether an item is a production item is based on the existence of at least
 one value in the incidents field, which is a web link field.
 * Because it's a web link field, we can't query on it and the data isn't in 
 lookback, so we have to go get all the defects first.
-
+* This app uses a new component in the settings to handle selecting multiple state values
+because the current field value dropdown doesn't play well with settings when in multiSelect
+mode.
 
 ### First Load
 
