@@ -3,11 +3,11 @@
 <head>
     <title>Defect Resolution Trend</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 17 2015 16:32:41 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 17 2015 16:45:35 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 17 2015 16:32:41 GMT-0700 (PDT)";
-        var CHECKSUM = 47034550814;
+        var APP_BUILD_DATE = "Thu Sep 17 2015 16:45:35 GMT-0700 (PDT)";
+        var CHECKSUM = 47473554683;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -654,7 +654,13 @@ Ext.define('Rally.technicalservices.MultiStateComboBox',{
                 var combobox = this.down('rallycombobox');
                 combobox.getStore().loadData(states);
 
-                combobox.setValue(this.getValue());
+                var current_values = this.getValue();
+                console.log('current values:', current_values);
+                
+                if ( !Ext.isArray(current_values) ) {
+                    current_values = current_values.split(',');
+                }
+                combobox.setValue(current_values);
                 this.fireEvent('ready',this);
                 
             },
@@ -1392,7 +1398,7 @@ Ext.define("TSDefectResolutionTrend", {
                 this.down('tsdefectresolutiontrendchart').updateTimebox(this.timeboxScope);
             }
         } else {
-            this._createChart('Summary');
+            this._createChart();
         }
 
     },
@@ -1403,14 +1409,14 @@ Ext.define("TSDefectResolutionTrend", {
             this.down('tsdefectresolutiontrendchart').destroy();
         }
         
-        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
-        
         if ( !Ext.isArray(this.getSetting('closedStateNames') ) ) {
             var settings = this.getSettings();
             settings.closedStateNames = this.getSetting('closedStateNames').split(',');
             this.setSettings(settings);
         }
 
+        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
+        
         this.add({
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,

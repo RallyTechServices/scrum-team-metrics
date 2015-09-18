@@ -59,7 +59,6 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
         this.endDate = this.endDate || this._getEndDate(snapshots);
             
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
-            console.log(snapshot.State, snapshot._ValidTo, me._isResolved(snapshot));
             return ( me._isResolved(snapshot)  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         

@@ -3,11 +3,11 @@
 <head>
     <title>Defect Response Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 10 2015 16:14:54 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 17 2015 16:58:46 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 10 2015 16:14:54 GMT-0700 (PDT)";
-        var CHECKSUM = 34555080158;
+        var APP_BUILD_DATE = "Thu Sep 17 2015 16:58:46 GMT-0700 (PDT)";
+        var CHECKSUM = 41263214158;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -586,6 +586,96 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
 });
 
 
+/*
+ * create a form field thing.  
+ */
+
+Ext.define('Rally.technicalservices.MultiStateComboBox',{
+    alias: 'widget.multistatecombo',
+    extend: 'Ext.form.FieldContainer',
+
+    mixins: {
+        field: 'Ext.form.field.Field'
+    },
+    
+    cls: 'multistate',
+    
+    config: {
+        /**
+         * @cfg {String}
+         * The label for the field to be passed through to the combobox
+         */
+        fieldLabel: '',
+        
+        value: undefined
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.mixins.field.initField.call(this);
+        
+        var me = this;
+        this.add([{
+            xtype: 'rallycombobox',
+            name: 'statefield',
+            plugins: ['rallyfieldvalidationui'],
+            multiSelect: true,
+            emptyText: 'Choose...',
+            displayField: 'name',
+            valueField: 'value',
+            width: this.width,
+            editable: false,
+            submitValue: false,
+            storeType: 'Ext.data.Store',
+            storeConfig: {
+                remoteFilter: false,
+                fields: ['name', 'value'],
+                data: []
+            },
+            listeners: { 
+                'change': function(cb,new_value, old_value){
+                    me.state_value = new_value;
+                }
+            }
+        }]);
+        
+        this._loadStates();
+    },
+    
+    _loadStates: function() {
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues("Defect","State").then({
+            scope: this,
+            success: function(state_names) {
+                
+                var states = Ext.Array.map(state_names,function(state_name){
+                    return { 'name': state_name, 'value': state_name }
+                });
+                
+                var combobox = this.down('rallycombobox');
+                combobox.getStore().loadData(states);
+
+                var current_values = this.getValue();
+                console.log('current values:', current_values);
+                
+                if ( !Ext.isArray(current_values) ) {
+                    current_values = current_values.split(',');
+                }
+                combobox.setValue(current_values);
+                this.fireEvent('ready',this);
+                
+            },
+            failure: function(msg) { 
+                Ext.Msg.alert('Problem Retrieving States', msg);
+            }
+        });
+    },
+    
+    getSubmitData: function() {
+        var data = {};
+        data[this.name] = this.state_value;
+        return data;
+    }
+});
 Ext.define('Rally.technicalservices.WsapiToolbox',{
     singleton: true,
     fetchWsapiCount: function(model, query_filters){
@@ -707,9 +797,10 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
                 return d.get('ObjectID')
             });
             
-            return 
+            return (
                 snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+            );
         }
         return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
 
@@ -741,13 +832,13 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
     runCalculation: function (snapshots) {
         var me = this;
         
+        console.log('closed states:', me.closedStateNames, snapshots.length);
+        
         this.startDate = this.startDate || this._getStartDate(snapshots);
         this.endDate = this.endDate || this._getEndDate(snapshots);
             
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
-            return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
-                 && me._isCreatedAfterStart(snapshot)
-                 && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
+            return ( me._isResolved(snapshot)  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         
         var cycle_times_by_project = {};
@@ -765,6 +856,9 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
             cycle_times.push(time_difference);
             
+            if ( project_oid == 20104652093 ) {
+                console.log(snapshot.ObjectID, creation_date_in_js,state_date_in_js,time_difference);
+            }
             cycle_times_by_project[project_oid].push(time_difference);
         });
 
@@ -828,6 +922,12 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
          * Show only production defects (defects associated with an incident)
          */
         showOnlyProduction: false,
+        
+        /**
+         * @cfg [{Boolean}] 
+         * State names to include in the definition of 'Closed'
+         */
+        closedStateNames: ['Closed'],
         /**
          * 
          * @cfg {String}
@@ -1025,6 +1125,7 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                 trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
                 productionDefects: defects_by_location.production,
                 showOnlyProduction: me.showOnlyProduction,
+                closedStateNames: me.closedStateNames,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
@@ -1148,10 +1249,13 @@ Ext.define("TSDefectResponseTime", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            showOnlyProduction:  false
+            showOnlyProduction:  true,
+            closedStateNames: ['Fixed']
         }
     },
-    
+
+    summaryType: 'Summary',
+
     layout: { type:'vbox'},
     
     timeboxScope: null,
@@ -1161,7 +1265,9 @@ Ext.define("TSDefectResponseTime", {
         this.timeboxScope = timeboxScope;
         
         if (!this.down('rallybutton')){
-            this.add({
+            var container = this.add({xtype:'container', layout: { type:'hbox'}, width: this.getWidth() - 25 });
+            
+            container.add({
                 xtype: 'rallybutton',
                 text: 'Team View',
                 cls: 'secondary rly-small',
@@ -1170,30 +1276,42 @@ Ext.define("TSDefectResponseTime", {
                     click: this._updateView
                 }
             });
+            
+            container.add({xtype:'container', flex: 1});
+            
+            container.add({xtype:'container', itemId: 'state_box', tpl:"<tpl>Resolved States: {closedStates}</tpl>" });
         }
         
         if (this.down('tsdefectresponsetime')){
             this.down('tsdefectresponsetime').updateTimebox(this.timeboxScope);
         } else {
-            this._createChart('Summary');
+            this._createChart();
         }
 
     },
     
     // expect type to be 'Summary' or 'Team'
-    _createChart: function(summary_type) {
+    _createChart: function() {
         if (this.down('tsdefectresponsetime')){
             this.down('tsdefectresponsetime').destroy();
         }
         
-        this.logger.log('width', this.width, this.getWidth());
+        if ( !Ext.isArray(this.getSetting('closedStateNames') ) ) {
+            var settings = this.getSettings();
+            settings.closedStateNames = this.getSetting('closedStateNames').split(',');
+            this.setSettings(settings);
+        }
+
+        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
+
         
         this.add({
             xtype: 'tsdefectresponsetime',
             timeboxScope: this.timeboxScope,
             context: this.getContext(),
-            showOnlyProduction: this.showOnlyProduction,
-            summaryType: summary_type,
+            closedStateNames: this.getSetting('closedStateNames'),
+            showOnlyProduction: this.getSetting('showOnlyProduction'),
+            summaryType: this.summaryType,
             width: this.getWidth() - 25
         });
     },
@@ -1207,6 +1325,15 @@ Ext.define("TSDefectResponseTime", {
                 fieldLabel: '',
                 margin: '0 0 25 20',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
+            },
+            {
+                name: 'closedStateNames',
+                xtype: 'multistatecombo',
+                labelWidth: 100,
+                width: 500,
+                margin: '0 0 25 10',
+                fieldLabel: 'Resolved States',
+                readyEvent: 'ready'
             }
         ];
     },
@@ -1214,10 +1341,12 @@ Ext.define("TSDefectResponseTime", {
     _updateView: function(btn){
         if (btn.text == 'Team View'){
             btn.setText("< Back to Summary");
-            this._createChart('Team');
+            this.summaryType = 'Team';
+            this._createChart();
         } else {
             btn.setText("Team View");
-            this._createChart('Summary');
+            this.summaryType = 'Summary';
+            this._createChart();
         }
     },
     
@@ -1247,7 +1376,7 @@ Ext.define("TSDefectResponseTime", {
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
         Ext.apply(this, settings);
-        this.launch();
+        this._createChart();
     }
 });
 

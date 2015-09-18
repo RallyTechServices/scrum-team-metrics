@@ -46,7 +46,7 @@ Ext.define("TSDefectResolutionTrend", {
                 this.down('tsdefectresolutiontrendchart').updateTimebox(this.timeboxScope);
             }
         } else {
-            this._createChart('Summary');
+            this._createChart();
         }
 
     },
@@ -57,14 +57,14 @@ Ext.define("TSDefectResolutionTrend", {
             this.down('tsdefectresolutiontrendchart').destroy();
         }
         
-        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
-        
         if ( !Ext.isArray(this.getSetting('closedStateNames') ) ) {
             var settings = this.getSettings();
             settings.closedStateNames = this.getSetting('closedStateNames').split(',');
             this.setSettings(settings);
         }
 
+        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
+        
         this.add({
             xtype: 'tsdefectresolutiontrendchart',
             timeboxScope: this.timeboxScope,

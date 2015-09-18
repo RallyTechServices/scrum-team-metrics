@@ -66,7 +66,13 @@ Ext.define('Rally.technicalservices.MultiStateComboBox',{
                 var combobox = this.down('rallycombobox');
                 combobox.getStore().loadData(states);
 
-                combobox.setValue(this.getValue());
+                var current_values = this.getValue();
+                console.log('current values:', current_values);
+                
+                if ( !Ext.isArray(current_values) ) {
+                    current_values = current_values.split(',');
+                }
+                combobox.setValue(current_values);
                 this.fireEvent('ready',this);
                 
             },

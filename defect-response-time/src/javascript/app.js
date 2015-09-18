@@ -12,7 +12,9 @@ Ext.define("TSDefectResponseTime", {
             closedStateNames: ['Fixed']
         }
     },
-    
+
+    summaryType: 'Summary',
+
     layout: { type:'vbox'},
     
     timeboxScope: null,
@@ -22,7 +24,9 @@ Ext.define("TSDefectResponseTime", {
         this.timeboxScope = timeboxScope;
         
         if (!this.down('rallybutton')){
-            this.add({
+            var container = this.add({xtype:'container', layout: { type:'hbox'}, width: this.getWidth() - 25 });
+            
+            container.add({
                 xtype: 'rallybutton',
                 text: 'Team View',
                 cls: 'secondary rly-small',
@@ -31,23 +35,34 @@ Ext.define("TSDefectResponseTime", {
                     click: this._updateView
                 }
             });
+            
+            container.add({xtype:'container', flex: 1});
+            
+            container.add({xtype:'container', itemId: 'state_box', tpl:"<tpl>Resolved States: {closedStates}</tpl>" });
         }
         
         if (this.down('tsdefectresponsetime')){
             this.down('tsdefectresponsetime').updateTimebox(this.timeboxScope);
         } else {
-            this._createChart('Summary');
+            this._createChart();
         }
 
     },
     
     // expect type to be 'Summary' or 'Team'
-    _createChart: function(summary_type) {
+    _createChart: function() {
         if (this.down('tsdefectresponsetime')){
             this.down('tsdefectresponsetime').destroy();
         }
         
-        this.logger.log('width', this.width, this.getWidth());
+        if ( !Ext.isArray(this.getSetting('closedStateNames') ) ) {
+            var settings = this.getSettings();
+            settings.closedStateNames = this.getSetting('closedStateNames').split(',');
+            this.setSettings(settings);
+        }
+
+        this.down('#state_box').update({closedStates: this.getSetting('closedStateNames').join(',')});
+
         
         this.add({
             xtype: 'tsdefectresponsetime',
@@ -55,7 +70,7 @@ Ext.define("TSDefectResponseTime", {
             context: this.getContext(),
             closedStateNames: this.getSetting('closedStateNames'),
             showOnlyProduction: this.getSetting('showOnlyProduction'),
-            summaryType: summary_type,
+            summaryType: this.summaryType,
             width: this.getWidth() - 25
         });
     },
@@ -69,6 +84,15 @@ Ext.define("TSDefectResponseTime", {
                 fieldLabel: '',
                 margin: '0 0 25 20',
                 boxLabel: 'Show Production Only<br/><span style="color:#999999;"><i>Tick to show only defects associated with an incident</i></span>'
+            },
+            {
+                name: 'closedStateNames',
+                xtype: 'multistatecombo',
+                labelWidth: 100,
+                width: 500,
+                margin: '0 0 25 10',
+                fieldLabel: 'Resolved States',
+                readyEvent: 'ready'
             }
         ];
     },
@@ -76,10 +100,12 @@ Ext.define("TSDefectResponseTime", {
     _updateView: function(btn){
         if (btn.text == 'Team View'){
             btn.setText("< Back to Summary");
-            this._createChart('Team');
+            this.summaryType = 'Team';
+            this._createChart();
         } else {
             btn.setText("Team View");
-            this._createChart('Summary');
+            this.summaryType = 'Summary';
+            this._createChart();
         }
     },
     
@@ -109,6 +135,6 @@ Ext.define("TSDefectResponseTime", {
     onSettingsUpdate: function (settings){
         this.logger.log('onSettingsUpdate',settings);
         Ext.apply(this, settings);
-        this.launch();
+        this._createChart();
     }
 });
