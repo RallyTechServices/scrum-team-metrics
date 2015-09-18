@@ -13,7 +13,7 @@ Ext.define("TSDefectResponseTime", {
         }
     },
 
-    summaryType: 'Summary',
+    summaryType: 'Team',
 
     layout: { type:'vbox'},
     
@@ -28,7 +28,7 @@ Ext.define("TSDefectResponseTime", {
             
             container.add({
                 xtype: 'rallybutton',
-                text: 'Team View',
+                text: '< Back to Summary',
                 cls: 'secondary rly-small',
                 listeners: {
                     scope: this,

@@ -199,7 +199,6 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             colors = ['blue'];
         }
         
-        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,

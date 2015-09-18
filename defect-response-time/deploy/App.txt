@@ -3,11 +3,11 @@
 <head>
     <title>Defect Response Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 17 2015 16:58:46 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 17 2015 17:05:04 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 17 2015 16:58:46 GMT-0700 (PDT)";
-        var CHECKSUM = 41263214158;
+        var APP_BUILD_DATE = "Thu Sep 17 2015 17:05:04 GMT-0700 (PDT)";
+        var CHECKSUM = 41270500211;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -1101,7 +1101,6 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             colors = ['blue'];
         }
         
-        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -1254,7 +1253,7 @@ Ext.define("TSDefectResponseTime", {
         }
     },
 
-    summaryType: 'Summary',
+    summaryType: 'Team',
 
     layout: { type:'vbox'},
     
@@ -1269,7 +1268,7 @@ Ext.define("TSDefectResponseTime", {
             
             container.add({
                 xtype: 'rallybutton',
-                text: 'Team View',
+                text: '< Back to Summary',
                 cls: 'secondary rly-small',
                 listeners: {
                     scope: this,
