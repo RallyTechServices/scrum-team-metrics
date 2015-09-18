@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Defect Response Time</title>
+    <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Sep 18 2015 15:48:25 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Sep 10 2015 18:45:24 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Sep 18 2015 15:48:25 GMT-0700 (PDT)";
+        var APP_BUILD_DATE = "Thu Sep 10 2015 18:45:24 GMT-0700 (PDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -16,8 +16,8 @@
         Rally.onReady(function() {
             
             
-               Rally.launchApp('TSDefectResponseTime', {
-                   name: 'Defect Response Time'
+               Rally.launchApp('TSFeatureCycleTime', {
+                   name: 'Feature Cycle Time'
                });
         });
     </script>

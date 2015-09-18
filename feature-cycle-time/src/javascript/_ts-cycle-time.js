@@ -1,6 +1,6 @@
-Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
+Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
     extend: 'Ext.panel.Panel', 
-    alias: 'widget.tsdefectresponsetime',
+    alias: 'widget.tsfeaturecycletime',
     logger: new Rally.technicalservices.Logger(),
 
     config: {
@@ -15,17 +15,6 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
          */
         context: undefined,
         
-        /**
-         * @cfg {Boolean} 
-         * Show only production defects (defects associated with an incident)
-         */
-        showOnlyProduction: false,
-        
-        /**
-         * @cfg [{Boolean}] 
-         * State names to include in the definition of 'Closed'
-         */
-        closedStateNames: ['Closed'],
         /**
          * 
          * @cfg {String}
@@ -63,16 +52,6 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
         var me = this;
         
         this.setLoading("Getting valid states...",true);
-        Rally.technicalservices.WsapiToolbox.fetchAllowedValues('Defect','State').then({
-            scope: this,
-            success: function(states){
-                this.fieldValues = states;
-                this.updateChart();
-            },
-            failure: function(msg) {
-                Ext.Msg.alert("Problem with " + this.xtype, msg);
-            }
-        });
         
         if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
             this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
@@ -88,6 +67,8 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             });
         }
         
+        this.updateChart();
+
     },
     
     updateTimebox: function(timebox) {
@@ -106,84 +87,32 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
         var me = this;
         if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
 
-        this.setLoading("Getting defects...");
-        Deft.Chain.pipeline([
-            this._getDefectsInTimebox,
-            this._separateIntoDiscoveryLocations
-        ],this).then({
+        this._getReleases(this.timeboxScope).then({
             scope: this,
-            success: function(results){
-                this._makeChart(results);
+            success: function(releases){
+                var release_oids = Ext.Array.map(releases,function(release){
+                    return release.get('ObjectID');
+                });
+                this._makeChart(release_oids);
             },
             failure: function(msg) {
                 Ext.Msg.alert("Problem with " + this.xtype, msg);
             }
-        }).always(function() { 
-            me.setLoading(false); 
         });
-        
     },
     
-    /*
-     * returns a promise
-     */
-    _getDefectsInTimebox: function() {
-        var model = "Defect";
-        var fetch = ['FormattedID','CreationDate','Severity','Tags','c_IncidentCases','State','Project','ObjectID'];
+    _getReleases: function(timebox_scope) {
+        var release_name = timebox_scope.getRecord().get('Name');
+        var model = "Release";
+        var fetch = ['ObjectID'];
+       
+        var filters = [{property:'Name', value:release_name}];
         
-        var severity_filters = Rally.data.wsapi.Filter.or([
-            { property: 'Severity', value: 'Minor Problem' },
-            { property: 'Severity', value: 'Major Problem' },
-            { property: 'Severity', value: 'Crash/Data Loss' }
-        ]);
-        
-        var filters = severity_filters;
-        
-        if ( !Ext.isEmpty(this.timeboxScope.getRecord()) ) {
-            this.startDate = this.timeboxScope.getRecord().get('ReleaseStartDate');
-            this.endDate = this.timeboxScope.getRecord().get('ReleaseDate');
-        
-            var date_filters = Rally.data.wsapi.Filter.and([
-                { property:'CreationDate', operator: '>=', value: this.startDate },
-                { property:'CreationDate', operator: '<=', value: this.endDate }
-            ]);
-        
-            filters = date_filters.and(severity_filters);
-        }
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(model, filters, fetch);
     },
     
-    _separateIntoDiscoveryLocations: function(records) {
-        var locations = { production: [], qa: [] };
-        
-        Ext.Array.each(records, function(record){
-            if (this._hasIncident(record)) {
-                locations.production.push(record);
-            } else {
-                locations.qa.push(record);
-            }
-        },this);
-        
-        return locations;
-    },
-    
-    _isCID: function(defect) {
-        var tags = Ext.Array.pluck( defect.get('Tags')._tagsNameArray, 'Name' );
-        return Ext.Array.contains(tags,'CID');
-    },
-    
-    _hasIncident: function(defect) {
-        var cases_link = defect.get('c_IncidentCases');
-        return ( !Ext.isEmpty(cases_link.LinkID) );
-    },
-    
-    _makeChart: function(defects_by_location){
+    _makeChart: function(release_oids){
         var me = this;
-        
-        var projects_by_oid = {};
-        Ext.Array.each(Ext.Array.push(defects_by_location.qa, defects_by_location.production), function(defect){
-            projects_by_oid[defect.get('Project').ObjectID] = defect.get('Project')._refObjectName;
-        });
         
         if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
         
@@ -199,6 +128,7 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             colors = ['blue'];
         }
         
+        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -206,30 +136,25 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
+                    _TypeHierarchy: 'PortfolioItem/Feature',
+                    _ProjectHierarchy: this.context.getProject().ObjectID,
                     CreationDate: {
-                        '$gte': Rally.util.DateTime.toIsoString(this.startDate),
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
                     },
-                    _TypeHierarchy: 'Defect',
-                    _ProjectHierarchy: this.context.getProject().ObjectID
+                    Release: { '$in': release_oids }
                 },
                 compress: true,
-                fetch: ['State','CreationDate','FormattedID','Name'],
-                hydrate: ['State']
+                fetch: ['State','CreationDate','Project'],
+                hydrate: ['State','Project']
             },
-            calculatorType: 'Rally.TechnicalServices.calculator.DefectResponseTimeCalculator',
+            calculatorType: 'Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator',
             calculatorConfig: {
                 trackLastValueForTheseFields: ['_ValidTo', '_ValidFrom', 'State'],
-                productionDefects: defects_by_location.production,
-                showOnlyProduction: me.showOnlyProduction,
-                closedStateNames: me.closedStateNames,
                 startDate: me.startDate,
                 endDate: me.endDate,
                 granularity: 'day',
-                projectsByOID: projects_by_oid,
                 summaryType: me.summaryType,
-                chartType: me.chartType,
-                onPointClick: me._displayDialogForClick
+                chartType: me.chartType
             },
             sort: {
                 "_ValidFrom": 1
@@ -334,69 +259,5 @@ Ext.define('Rally.technicalservices.chart.DefectResponseTime', {
                 enabled: false
             }
         };
-    },
-    
-    // snapshots are one per defect and include a 
-    // field __cycle that was set by the calculator
-    _displayDialogForClick: function(evt,snapshots) {
-        var app = Rally.getApp();
-        
-        var point = evt.point;
-        var project_name = point.category;
-        var project_snaps = snapshots[project_name];
-        
-        
-        app.logger.log('project snaps', project_snaps);
-        
-        var store = Ext.create('Rally.data.custom.Store',{ data: project_snaps });
-        
-        var date_renderer = function(v) {
-            if ( Ext.isEmpty(v) ) { return ''; }
-            return v.replace(/T.*$/,'');
-        }
-        
-        var cycle_time_renderer = function(v) {
-            if ( Ext.isEmpty(v) ) { return "--"; }
-            
-            return Ext.util.Format.number(v/24,'0.0');
-        }
-        
-        var link_renderer = function(value, meta, record) {
-            var obj = { _ref: '/defect/' + record.get('ObjectID') };
-            
-            return "<a href='" + Rally.nav.Manager.getDetailUrl(obj) + "' target='_blank'>" + value + "</a>"
-        }
-        
-        Ext.create('Rally.ui.dialog.Dialog', {
-            id        : 'detailPopup',
-            title     : 'Details for ' + project_name,
-            width     : Ext.getBody().getWidth() - 25,
-            height    : Ext.getBody().getHeight() - 25,
-            closable  : true,
-           // layout    : 'fit',
-            items     : [{
-                xtype:  'container',
-                layout: { type: 'hbox'},
-                items: [
-                    { xtype: 'container', flex: 1}
-                ]
-            },
-            {
-                xtype                : 'rallygrid',
-                sortableColumns      : true,
-                showRowActionsColumn : false,
-                showPagingToolbar    : false,
-                columnCfgs           : [
-                    { dataIndex: 'FormattedID', text: 'id', renderer: link_renderer },
-                    { dataIndex: 'Name', text: 'Name', flex: 1 },
-                    { dataIndex: 'State', text: 'State' },
-                    { dataIndex: 'CreationDate', text: 'Creation Date', renderer: date_renderer },
-                    { dataIndex: '_ValidFrom', text: 'End Date', renderer: date_renderer },
-                    { dataIndex: '__cycle', text: 'Cycle Time (days)', renderer: cycle_time_renderer }
-                ],
-                store : store
-            }]
-        }).show();
-        
     }
 });

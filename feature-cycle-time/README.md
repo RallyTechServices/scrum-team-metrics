@@ -1,32 +1,16 @@
-#Defect Resolution Trend
+#Feature Cycle Time
 
-This chart shows the rate of items created and resolved during the release period
-selected.  It does not care whether defects are associated with the release
-directly, only that they were created during the time period.
-
-* Note that items might have been resolved during the period, but if they are
-items that were created before the period started, they do not count.
-
-An additional Trend line has been added that shows the difference between the
-number that have been created and killed to the date.  The ideal here is for resolving 
-defects to happen as fast or faster than creating new ones, so a rising line is 
-suboptimal, a flat or declining line is better.
-
-There is an app setting to let the installer decide whether the app will count all
-defects or only defects associated with production via a special web link field.
-
-There another app setting to let the installer decide the definition of resolved, that is
-across one or more states.
+This app shows the average time it takes from creation of features to the point at
+which they've reached either Done or Operate.  The chosen features are restricted
+to those associated with the release.  (They must have been associated with the release
+at the time of the state change to Operate or Done).
 
 ## Development Notes
 
-* Whether an item is a production item is based on the existence of at least
-one value in the incidents field, which is a web link field.
-* Because it's a web link field, we can't query on it and the data isn't in 
-lookback, so we have to go get all the defects first.
-* This app uses a new component in the settings to handle selecting multiple state values
-because the current field value dropdown doesn't play well with settings when in multiSelect
-mode.
+* Although the display of resolution time is in days, it is calculated in hours
+then divided by 24 so that we can have partial days.
+* Feature is pinned to "PortfolioItem/Feature", so the app will need to be 
+modified if the lowest level PI name is changed.
 
 ### First Load
 

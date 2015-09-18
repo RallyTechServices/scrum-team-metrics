@@ -18,9 +18,10 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
                 return d.get('ObjectID')
             });
             
-            return 
+            return (
                 snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate)
-                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID);
+                && Ext.Array.contains(production_defect_oids,snapshot.ObjectID)
+            );
         }
         return (snapshot.CreationDate >= Rally.util.DateTime.toIsoString(me.config.startDate));
 
@@ -52,13 +53,13 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
     runCalculation: function (snapshots) {
         var me = this;
         
+        console.log('closed states:', me.closedStateNames, snapshots.length);
+        
         this.startDate = this.startDate || this._getStartDate(snapshots);
         this.endDate = this.endDate || this._getEndDate(snapshots);
             
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
-            return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
-                 && me._isCreatedAfterStart(snapshot)
-                 && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
+            return ( me._isResolved(snapshot)  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         
         var cycle_times_by_project = {};
@@ -76,7 +77,11 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
             cycle_times.push(time_difference);
             
-            cycle_times_by_project[project_oid].push(time_difference);
+            if ( project_oid == 20104652093 ) {
+                console.log(snapshot.ObjectID, creation_date_in_js,state_date_in_js,time_difference);
+            }
+            snapshot.__cycle = time_difference;
+            cycle_times_by_project[project_oid].push({ cycle: time_difference, snapshot: snapshot});
         });
 
         var series = [];
@@ -95,25 +100,46 @@ Ext.define("Rally.TechnicalServices.calculator.DefectResponseTimeCalculator", {
             }
         } else {
             var series_data = [];
+            var series_snapshots = {};
+            
             Ext.Object.each(me.projectsByOID, function(project_oid, project_name){
                 if ( ! Ext.isEmpty(cycle_times_by_project[project_oid]) ) {
-                    var average = Ext.Array.mean(cycle_times_by_project[project_oid]);
+                    var cycles = Ext.Array.pluck(cycle_times_by_project[project_oid],'cycle');
+                    var average = Ext.Array.mean(cycles);
                     if ( me.granularity == "day" ) {
                         average = average / 24;
                     }
+                    
                     series_data.push(average);
+                    
+                    series_snapshots[project_name] = Ext.Array.pluck(cycle_times_by_project[project_oid],'snapshot');
+                    
                     categories.push(project_name);
                 }
             });
-            series = [{name:'Average Resolution Time', data:series_data}];
+            
+            series = [{
+                name:'Average Resolution Time', 
+                data:series_data,
+                options: { series_snapshots:series_snapshots },
+                point: { 
+                    events: {
+                        click: function(evt) {
+                            me.onPointClick(evt,series_snapshots);
+                        }
+                    }
+                }
+            }];
         }
-        
-        console.log('series: ', series);
         
         return {
             categories: categories,
             series: series
         }
+    },
+    
+    onPointClick: function(evt) {
+        // override with configuration setting
     }
     
  });
