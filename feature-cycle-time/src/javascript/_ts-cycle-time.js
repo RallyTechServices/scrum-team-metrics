@@ -87,13 +87,16 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         var me = this;
         if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
 
-        this._getReleases(this.timeboxScope).then({
+        // have to get the features in the release now so that we
+        // can see what the cycle time was for the feature even if
+        // it went through state changes while not in this release
+        this._getFeaturesInRelease(this.timeboxScope).then({
             scope: this,
-            success: function(releases){
-                var release_oids = Ext.Array.map(releases,function(release){
-                    return release.get('ObjectID');
+            success: function(features){
+                var feature_oids = Ext.Array.map(features,function(feature){
+                    return feature.get('ObjectID');
                 });
-                this._makeChart(release_oids);
+                this._makeChart(feature_oids);
             },
             failure: function(msg) {
                 Ext.Msg.alert("Problem with " + this.xtype, msg);
@@ -101,17 +104,24 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         });
     },
     
-    _getReleases: function(timebox_scope) {
+    _getFeaturesInRelease: function(timebox_scope) {
         var release_name = timebox_scope.getRecord().get('Name');
-        var model = "Release";
+        var model = "PortfolioItem/Feature";
         var fetch = ['ObjectID'];
        
-        var filters = [{property:'Name', value:release_name}];
+        var state_filters = Rally.data.wsapi.Filter.or([
+            {property:'State.Name', value:'Done'},
+            {property:'State.Name', value:'Operate'}
+        ]);
+        
+        var release_filter = Ext.create('Rally.data.wsapi.Filter', {property:'Release.Name', value:release_name});
+        
+        var filters = state_filters.and(release_filter);
         
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(model, filters, fetch);
     },
     
-    _makeChart: function(release_oids){
+    _makeChart: function(feature_oids){
         var me = this;
         
         if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
@@ -128,7 +138,6 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             colors = ['blue'];
         }
         
-        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -136,12 +145,11 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
+                    ObjectID: { '$in': feature_oids },
                     _TypeHierarchy: 'PortfolioItem/Feature',
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
                     CreationDate: {
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
-                    },
-                    Release: { '$in': release_oids }
+                    }
                 },
                 compress: true,
                 fetch: ['State','CreationDate','Project'],

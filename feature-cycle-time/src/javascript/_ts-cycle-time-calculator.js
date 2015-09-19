@@ -2,6 +2,7 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
     extend: "Rally.data.lookback.calculator.TimeInStateCalculator",
 
     config: {
+        devStateNames: ['Dev','Test','Deploy', 'Develop', 'In-Flight'], // 'In-Scope' from old state values
         closedStateNames: ['Done','Operate'],
         chartType: 'column', /* column or pie */
         summaryType: 'Summary', // || 'Team'
@@ -11,9 +12,29 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
     runCalculation: function (snapshots) {
         var me = this;
         
+        var start_times_by_oid = {};
+        
         this.startDate = this.startDate || this._getStartDate(snapshots);
         this.endDate = this.endDate || this._getEndDate(snapshots);
-            
+        
+        var start_snaps = Ext.Array.filter(snapshots, function(snapshot){
+
+            return ( Ext.Array.contains(me.devStateNames, snapshot.State ) );
+        });
+        
+        Ext.Array.each( start_snaps, function(snapshot){
+            var oid = snapshot.ObjectID;
+            var start_date = snapshot._ValidFrom;
+            var state = snapshot.State;
+            if ( start_times_by_oid[oid] ) {
+                if ( start_date < start_times_by_oid[oid] ) {
+                    start_times_by_oid[oid] = start_date;
+                }
+            } else {
+                start_times_by_oid[oid] = start_date;
+            }
+        });
+        
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
             return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
                  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
@@ -23,8 +44,17 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
         var cycle_times = [];
         
         Ext.Array.each(final_snaps,function(snapshot){
-            console.log(snapshot);
+            var start_date = start_times_by_oid[snapshot.ObjectID];
             var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
+            
+            var start_date_in_js = null;
+            if ( Ext.isEmpty(start_date) ) {
+                console.log("No start date, using creation date:", snapshot.ObjectID);
+                start_date_in_js = creation_date_in_js;
+            } else {
+                start_date_in_js = Rally.util.DateTime.fromIsoString(start_date);
+            }
+            
             var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
             var project_key = snapshot.Project.Name;
             
@@ -66,9 +96,7 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
             });
             series = [{name:'Average Cycle Time', data:series_data}];
         }
-        
-        console.log('series: ', series);
-        
+                
         return {
             categories: categories,
             series: series
