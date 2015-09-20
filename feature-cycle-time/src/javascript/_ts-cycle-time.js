@@ -87,13 +87,16 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         var me = this;
         if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
 
-        this._getReleases(this.timeboxScope).then({
+        // have to get the features in the release now so that we
+        // can see what the cycle time was for the feature even if
+        // it went through state changes while not in this release
+        this._getFeaturesInRelease(this.timeboxScope).then({
             scope: this,
-            success: function(releases){
-                var release_oids = Ext.Array.map(releases,function(release){
-                    return release.get('ObjectID');
+            success: function(features){
+                var feature_oids = Ext.Array.map(features,function(feature){
+                    return feature.get('ObjectID');
                 });
-                this._makeChart(release_oids);
+                this._makeChart(feature_oids);
             },
             failure: function(msg) {
                 Ext.Msg.alert("Problem with " + this.xtype, msg);
@@ -101,17 +104,24 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         });
     },
     
-    _getReleases: function(timebox_scope) {
+    _getFeaturesInRelease: function(timebox_scope) {
         var release_name = timebox_scope.getRecord().get('Name');
-        var model = "Release";
+        var model = "PortfolioItem/Feature";
         var fetch = ['ObjectID'];
        
-        var filters = [{property:'Name', value:release_name}];
+        var state_filters = Rally.data.wsapi.Filter.or([
+            {property:'State.Name', value:'Done'},
+            {property:'State.Name', value:'Operate'}
+        ]);
+        
+        var release_filter = Ext.create('Rally.data.wsapi.Filter', {property:'Release.Name', value:release_name});
+        
+        var filters = state_filters.and(release_filter);
         
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(model, filters, fetch);
     },
     
-    _makeChart: function(release_oids){
+    _makeChart: function(feature_oids){
         var me = this;
         
         if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
@@ -128,7 +138,6 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             colors = ['blue'];
         }
         
-        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -136,15 +145,14 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
+                    ObjectID: { '$in': feature_oids },
                     _TypeHierarchy: 'PortfolioItem/Feature',
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
                     CreationDate: {
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
-                    },
-                    Release: { '$in': release_oids }
+                    }
                 },
                 compress: true,
-                fetch: ['State','CreationDate','Project'],
+                fetch: ['State','CreationDate','Project','ObjectID','FormattedID','Name'],
                 hydrate: ['State','Project']
             },
             calculatorType: 'Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator',
@@ -154,7 +162,8 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 endDate: me.endDate,
                 granularity: 'day',
                 summaryType: me.summaryType,
-                chartType: me.chartType
+                chartType: me.chartType,
+                onPointClick: me._displayDialogForClick
             },
             sort: {
                 "_ValidFrom": 1
@@ -259,5 +268,70 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 enabled: false
             }
         };
+    },
+    
+    // snapshots are one per item and include a 
+    // field __cycle that was set by the calculator
+    _displayDialogForClick: function(evt,snapshots) {
+        var app = Rally.getApp();
+        
+        var point = evt.point;
+        var project_name = point.category;
+        var project_snaps = snapshots[project_name];
+        
+        
+        app.logger.log('project snaps', project_snaps);
+        
+        var store = Ext.create('Rally.data.custom.Store',{ data: project_snaps });
+        
+        var date_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return ''; }
+            return v.replace(/T.*$/,'');
+        }
+        
+        var cycle_time_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return "--"; }
+            
+            return Ext.util.Format.number(v/24,'0.0');
+        }
+        
+        var link_renderer = function(value, meta, record) {
+            var obj = { _ref: '/portfolioitem/feature/' + record.get('ObjectID') };
+            
+            return "<a href='" + Rally.nav.Manager.getDetailUrl(obj) + "' target='_blank'>" + value + "</a>"
+        }
+        
+        Ext.create('Rally.ui.dialog.Dialog', {
+            id        : 'detailPopup',
+            title     : 'Details for ' + project_name,
+            width     : Ext.getBody().getWidth() - 25,
+            height    : Ext.getBody().getHeight() - 25,
+            closable  : true,
+            items     : [{
+                xtype:  'container',
+                layout: { type: 'hbox'},
+                items: [
+                    { xtype: 'container', flex: 1}
+                ]
+            },
+            {
+                xtype                : 'rallygrid',
+                sortableColumns      : true,
+                showRowActionsColumn : false,
+                showPagingToolbar    : false,
+                width: Ext.getBody().getWidth() - 27,
+                height:Ext.getBody().getWidth() - 25,
+                columnCfgs           : [
+                    { dataIndex: 'FormattedID', text: 'id', renderer: link_renderer },
+                    { dataIndex: 'Name', text: 'Name', flex: 1 },
+                    { dataIndex: 'State', text: 'State' },
+                    { dataIndex: '__start_date', text: 'Start Date', renderer: date_renderer },
+                    { dataIndex: '_ValidFrom', text: 'End Date', renderer: date_renderer },
+                    { dataIndex: '__cycle', text: 'Cycle Time (days)', renderer: cycle_time_renderer }
+                ],
+                store : store
+            }]
+        }).show();
+        
     }
 });

@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Sep 10 2015 18:45:24 GMT-0700 (PDT) -->
+    <!--  Build Date: Sun Sep 20 2015 16:24:59 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Sep 10 2015 18:45:24 GMT-0700 (PDT)";
-        var CHECKSUM = 26786229461;
+        var APP_BUILD_DATE = "Sun Sep 20 2015 16:24:59 GMT-0700 (PDT)";
+        var CHECKSUM = 38259042851;
     </script>
     
     <script type="text/javascript" src="/apps/2.0/sdk.js"></script>
@@ -586,6 +586,96 @@ Ext.define('Rally.technicalservices.LookbackToolbox',{
 });
 
 
+/*
+ * create a form field thing.  
+ */
+
+Ext.define('Rally.technicalservices.MultiStateComboBox',{
+    alias: 'widget.multistatecombo',
+    extend: 'Ext.form.FieldContainer',
+
+    mixins: {
+        field: 'Ext.form.field.Field'
+    },
+    
+    cls: 'multistate',
+    
+    config: {
+        /**
+         * @cfg {String}
+         * The label for the field to be passed through to the combobox
+         */
+        fieldLabel: '',
+        
+        value: undefined
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+
+        this.mixins.field.initField.call(this);
+        
+        var me = this;
+        this.add([{
+            xtype: 'rallycombobox',
+            name: 'statefield',
+            plugins: ['rallyfieldvalidationui'],
+            multiSelect: true,
+            emptyText: 'Choose...',
+            displayField: 'name',
+            valueField: 'value',
+            width: this.width,
+            editable: false,
+            submitValue: false,
+            storeType: 'Ext.data.Store',
+            storeConfig: {
+                remoteFilter: false,
+                fields: ['name', 'value'],
+                data: []
+            },
+            listeners: { 
+                'change': function(cb,new_value, old_value){
+                    me.state_value = new_value;
+                }
+            }
+        }]);
+        
+        this._loadStates();
+    },
+    
+    _loadStates: function() {
+        Rally.technicalservices.WsapiToolbox.fetchAllowedValues("Defect","State").then({
+            scope: this,
+            success: function(state_names) {
+                
+                var states = Ext.Array.map(state_names,function(state_name){
+                    return { 'name': state_name, 'value': state_name }
+                });
+                
+                var combobox = this.down('rallycombobox');
+                combobox.getStore().loadData(states);
+
+                var current_values = this.getValue();
+                console.log('current values:', current_values);
+                
+                if ( !Ext.isArray(current_values) ) {
+                    current_values = current_values.split(',');
+                }
+                combobox.setValue(current_values);
+                this.fireEvent('ready',this);
+                
+            },
+            failure: function(msg) { 
+                Ext.Msg.alert('Problem Retrieving States', msg);
+            }
+        });
+    },
+    
+    getSubmitData: function() {
+        var data = {};
+        data[this.name] = this.state_value;
+        return data;
+    }
+});
 Ext.define('Rally.technicalservices.WsapiToolbox',{
     singleton: true,
     fetchWsapiCount: function(model, query_filters){
@@ -691,6 +781,7 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
     extend: "Rally.data.lookback.calculator.TimeInStateCalculator",
 
     config: {
+        devStateNames: ['Dev','Test','Deploy', 'Develop', 'In-Flight'], // 'In-Scope' from old state values
         closedStateNames: ['Done','Operate'],
         chartType: 'column', /* column or pie */
         summaryType: 'Summary', // || 'Team'
@@ -700,33 +791,66 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
     runCalculation: function (snapshots) {
         var me = this;
         
+        var start_times_by_oid = {};
+        
         this.startDate = this.startDate || this._getStartDate(snapshots);
         this.endDate = this.endDate || this._getEndDate(snapshots);
-            
+        
+        var start_snaps = Ext.Array.filter(snapshots, function(snapshot){
+            return ( Ext.Array.contains(me.devStateNames, snapshot.State ) );
+        });
+        
+        Ext.Array.each( start_snaps, function(snapshot){
+            var oid = snapshot.ObjectID;
+            var start_date = snapshot._ValidFrom;
+            var state = snapshot.State;
+            if ( start_times_by_oid[oid] ) {
+                if ( start_date < start_times_by_oid[oid] ) {
+                    start_times_by_oid[oid] = start_date;
+                }
+            } else {
+                start_times_by_oid[oid] = start_date;
+            }
+        });
+        
         var final_snaps = Ext.Array.filter(snapshots, function(snapshot){
             return ( Ext.Array.contains(me.closedStateNames, snapshot.State) 
                  && snapshot._ValidTo == "9999-01-01T00:00:00.000Z" );
         });
         
-        var cycle_times_by_project = {};
+        var snapshots_by_project = {};
         var cycle_times = [];
         
         Ext.Array.each(final_snaps,function(snapshot){
-            console.log(snapshot);
+            var start_date = start_times_by_oid[snapshot.ObjectID];
             var creation_date_in_js = Rally.util.DateTime.fromIsoString(snapshot.CreationDate);
-            var state_date_in_js =    Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
-            var project_key = snapshot.Project.Name;
             
-            if ( ! cycle_times_by_project[project_key] ) {
-                cycle_times_by_project[project_key] = [];
+            var start_date_in_js = null;
+            if ( Ext.isEmpty(start_date) ) {
+                console.log("No start date, using creation date:", snapshot.FormattedID);
+                start_date = snapshot.CreationDate;
+                start_date_in_js = creation_date_in_js;
+            } else {
+                start_date_in_js = Rally.util.DateTime.fromIsoString(start_date);
             }
             
-            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,creation_date_in_js,'hour');
-            cycle_times.push(time_difference);
+            snapshot.__start_date = start_date;
             
-            cycle_times_by_project[project_key].push(time_difference);
+            var state_date_in_js = Rally.util.DateTime.fromIsoString(snapshot._ValidFrom);
+            var project_key = snapshot.Project.Name;
+            
+            if ( ! snapshots_by_project[project_key] ) {
+                snapshots_by_project[project_key] = [];
+            }
+            
+            var time_difference = Rally.util.DateTime.getDifference(state_date_in_js,start_date_in_js,'hour');
+            snapshot.__cycle = time_difference;
+            console.log('--', snapshot.FormattedID, start_date, snapshot._ValidFrom, time_difference);
+            
+            cycle_times.push(time_difference);
+            snapshots_by_project[project_key].push(snapshot);
         });
-
+        
         var series = [];
         var categories = [];
         
@@ -743,9 +867,11 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
             }
         } else {
             var series_data = [];
-            Ext.Object.each(cycle_times_by_project, function(project_key, cycle_times){
-                if ( ! Ext.isEmpty(cycle_times) ) {
-                    var average = Ext.Array.mean(cycle_times);
+            Ext.Object.each(snapshots_by_project, function(project_key, project_snapshots){
+                if ( ! Ext.isEmpty(project_snapshots) ) {
+
+                    var cycles = Ext.Array.pluck(project_snapshots,'__cycle');
+                    var average = Ext.Array.mean(cycles);
                     if ( me.granularity == "day" ) {
                         average = average / 24;
                     }
@@ -753,15 +879,28 @@ Ext.define("Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator", {
                     categories.push(project_key);
                 }
             });
-            series = [{name:'Average Cycle Time', data:series_data}];
+            series = [{
+                name:'Average Cycle Time', 
+                data:series_data,
+                options: { series_snapshots: snapshots_by_project },
+                point: { 
+                    events: {
+                        click: function(evt) {
+                            me.onPointClick(evt,snapshots_by_project);
+                        }
+                    }
+                }
+            }];
         }
-        
-        console.log('series: ', series);
-        
+                
         return {
             categories: categories,
             series: series
         }
+    },
+    
+    onPointClick: function(evt) {
+        // override with configuration setting
     }
     
  });
@@ -854,13 +993,16 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         var me = this;
         if ( me.down('rallychart') ) { me.down('rallychart').destroy();}
 
-        this._getReleases(this.timeboxScope).then({
+        // have to get the features in the release now so that we
+        // can see what the cycle time was for the feature even if
+        // it went through state changes while not in this release
+        this._getFeaturesInRelease(this.timeboxScope).then({
             scope: this,
-            success: function(releases){
-                var release_oids = Ext.Array.map(releases,function(release){
-                    return release.get('ObjectID');
+            success: function(features){
+                var feature_oids = Ext.Array.map(features,function(feature){
+                    return feature.get('ObjectID');
                 });
-                this._makeChart(release_oids);
+                this._makeChart(feature_oids);
             },
             failure: function(msg) {
                 Ext.Msg.alert("Problem with " + this.xtype, msg);
@@ -868,17 +1010,24 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
         });
     },
     
-    _getReleases: function(timebox_scope) {
+    _getFeaturesInRelease: function(timebox_scope) {
         var release_name = timebox_scope.getRecord().get('Name');
-        var model = "Release";
+        var model = "PortfolioItem/Feature";
         var fetch = ['ObjectID'];
        
-        var filters = [{property:'Name', value:release_name}];
+        var state_filters = Rally.data.wsapi.Filter.or([
+            {property:'State.Name', value:'Done'},
+            {property:'State.Name', value:'Operate'}
+        ]);
+        
+        var release_filter = Ext.create('Rally.data.wsapi.Filter', {property:'Release.Name', value:release_name});
+        
+        var filters = state_filters.and(release_filter);
         
         return Rally.technicalservices.WsapiToolbox.fetchWsapiRecords(model, filters, fetch);
     },
     
-    _makeChart: function(release_oids){
+    _makeChart: function(feature_oids){
         var me = this;
         
         if ( this.down('rallychart') ) { this.down('rallychart').destroy();}
@@ -895,7 +1044,6 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             colors = ['blue'];
         }
         
-        
         var chart = this.down('#chart_box').add({
             xtype:'rallychart',
             height: this.height - 15,
@@ -903,15 +1051,14 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
             storeType: 'Rally.data.lookback.SnapshotStore',
             storeConfig: {
                 find: {
+                    ObjectID: { '$in': feature_oids },
                     _TypeHierarchy: 'PortfolioItem/Feature',
-                    _ProjectHierarchy: this.context.getProject().ObjectID,
                     CreationDate: {
                         '$lte': Rally.util.DateTime.toIsoString(this.endDate)
-                    },
-                    Release: { '$in': release_oids }
+                    }
                 },
                 compress: true,
-                fetch: ['State','CreationDate','Project'],
+                fetch: ['State','CreationDate','Project','ObjectID','FormattedID','Name'],
                 hydrate: ['State','Project']
             },
             calculatorType: 'Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator',
@@ -921,7 +1068,8 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 endDate: me.endDate,
                 granularity: 'day',
                 summaryType: me.summaryType,
-                chartType: me.chartType
+                chartType: me.chartType,
+                onPointClick: me._displayDialogForClick
             },
             sort: {
                 "_ValidFrom": 1
@@ -1026,6 +1174,71 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 enabled: false
             }
         };
+    },
+    
+    // snapshots are one per item and include a 
+    // field __cycle that was set by the calculator
+    _displayDialogForClick: function(evt,snapshots) {
+        var app = Rally.getApp();
+        
+        var point = evt.point;
+        var project_name = point.category;
+        var project_snaps = snapshots[project_name];
+        
+        
+        app.logger.log('project snaps', project_snaps);
+        
+        var store = Ext.create('Rally.data.custom.Store',{ data: project_snaps });
+        
+        var date_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return ''; }
+            return v.replace(/T.*$/,'');
+        }
+        
+        var cycle_time_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return "--"; }
+            
+            return Ext.util.Format.number(v/24,'0.0');
+        }
+        
+        var link_renderer = function(value, meta, record) {
+            var obj = { _ref: '/portfolioitem/feature/' + record.get('ObjectID') };
+            
+            return "<a href='" + Rally.nav.Manager.getDetailUrl(obj) + "' target='_blank'>" + value + "</a>"
+        }
+        
+        Ext.create('Rally.ui.dialog.Dialog', {
+            id        : 'detailPopup',
+            title     : 'Details for ' + project_name,
+            width     : Ext.getBody().getWidth() - 25,
+            height    : Ext.getBody().getHeight() - 25,
+            closable  : true,
+            items     : [{
+                xtype:  'container',
+                layout: { type: 'hbox'},
+                items: [
+                    { xtype: 'container', flex: 1}
+                ]
+            },
+            {
+                xtype                : 'rallygrid',
+                sortableColumns      : true,
+                showRowActionsColumn : false,
+                showPagingToolbar    : false,
+                width: Ext.getBody().getWidth() - 27,
+                height:Ext.getBody().getWidth() - 25,
+                columnCfgs           : [
+                    { dataIndex: 'FormattedID', text: 'id', renderer: link_renderer },
+                    { dataIndex: 'Name', text: 'Name', flex: 1 },
+                    { dataIndex: 'State', text: 'State' },
+                    { dataIndex: '__start_date', text: 'Start Date', renderer: date_renderer },
+                    { dataIndex: '_ValidFrom', text: 'End Date', renderer: date_renderer },
+                    { dataIndex: '__cycle', text: 'Cycle Time (days)', renderer: cycle_time_renderer }
+                ],
+                store : store
+            }]
+        }).show();
+        
     }
 });
 
