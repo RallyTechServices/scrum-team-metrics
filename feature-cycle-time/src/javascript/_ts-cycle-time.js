@@ -152,7 +152,7 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                     }
                 },
                 compress: true,
-                fetch: ['State','CreationDate','Project'],
+                fetch: ['State','CreationDate','Project','ObjectID','FormattedID','Name'],
                 hydrate: ['State','Project']
             },
             calculatorType: 'Rally.TechnicalServices.calculator.FeatureCycleTimeCalculator',
@@ -162,7 +162,8 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 endDate: me.endDate,
                 granularity: 'day',
                 summaryType: me.summaryType,
-                chartType: me.chartType
+                chartType: me.chartType,
+                onPointClick: me._displayDialogForClick
             },
             sort: {
                 "_ValidFrom": 1
@@ -267,5 +268,70 @@ Ext.define('Rally.technicalservices.chart.FeatureCycleTime', {
                 enabled: false
             }
         };
+    },
+    
+    // snapshots are one per item and include a 
+    // field __cycle that was set by the calculator
+    _displayDialogForClick: function(evt,snapshots) {
+        var app = Rally.getApp();
+        
+        var point = evt.point;
+        var project_name = point.category;
+        var project_snaps = snapshots[project_name];
+        
+        
+        app.logger.log('project snaps', project_snaps);
+        
+        var store = Ext.create('Rally.data.custom.Store',{ data: project_snaps });
+        
+        var date_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return ''; }
+            return v.replace(/T.*$/,'');
+        }
+        
+        var cycle_time_renderer = function(v) {
+            if ( Ext.isEmpty(v) ) { return "--"; }
+            
+            return Ext.util.Format.number(v/24,'0.0');
+        }
+        
+        var link_renderer = function(value, meta, record) {
+            var obj = { _ref: '/portfolioitem/feature/' + record.get('ObjectID') };
+            
+            return "<a href='" + Rally.nav.Manager.getDetailUrl(obj) + "' target='_blank'>" + value + "</a>"
+        }
+        
+        Ext.create('Rally.ui.dialog.Dialog', {
+            id        : 'detailPopup',
+            title     : 'Details for ' + project_name,
+            width     : Ext.getBody().getWidth() - 25,
+            height    : Ext.getBody().getHeight() - 25,
+            closable  : true,
+            items     : [{
+                xtype:  'container',
+                layout: { type: 'hbox'},
+                items: [
+                    { xtype: 'container', flex: 1}
+                ]
+            },
+            {
+                xtype                : 'rallygrid',
+                sortableColumns      : true,
+                showRowActionsColumn : false,
+                showPagingToolbar    : false,
+                width: Ext.getBody().getWidth() - 27,
+                height:Ext.getBody().getWidth() - 25,
+                columnCfgs           : [
+                    { dataIndex: 'FormattedID', text: 'id', renderer: link_renderer },
+                    { dataIndex: 'Name', text: 'Name', flex: 1 },
+                    { dataIndex: 'State', text: 'State' },
+                    { dataIndex: '__start_date', text: 'Start Date', renderer: date_renderer },
+                    { dataIndex: '_ValidFrom', text: 'End Date', renderer: date_renderer },
+                    { dataIndex: '__cycle', text: 'Cycle Time (days)', renderer: cycle_time_renderer }
+                ],
+                store : store
+            }]
+        }).show();
+        
     }
 });

@@ -1,6 +1,6 @@
 #Feature Cycle Time
 
-This app shows the average time it takes from putting features into Develop to the point at
+This app shows the average time it takes from putting features into Develop state to the point at
 which they've reached either Done or Operate.  If the item doesn't go into dev, but goes
 straight to Test or Deploy, then that date is used.  If it skips all of those and goes
 straight to Done from a pre-dev state, then this uses CreationDate.  (For very old features,
@@ -9,13 +9,16 @@ the app uses Develop and In-Flight to represent going into Dev.)
 The chosen features are restricted to those associated with the release at the point the
 app is run (it doesn't matter if the item was part of the release when it changed state).
 
+When in Team View, each bar can be clicked to pop up a table of items that make up
+that bar -- it provides a link to the details page and name, dates and cycle time.
+
 ## Development Notes
 
 * Although the display of resolution time is in days, it is calculated in hours
 then divided by 24 so that we can have partial days.
 * Feature is pinned to "PortfolioItem/Feature", so the app will need to be 
 modified if the lowest level PI name is changed.
-* The app has to get the features first because there's not a compound query.
+* The app has to get the features in the release first because there's not a compound query.
 
 ### First Load
 
